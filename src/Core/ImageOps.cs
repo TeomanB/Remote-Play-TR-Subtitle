@@ -124,6 +124,28 @@ public static class ImageOps
         return true;
     }
 
+    /// <summary>Paints a rectangle opaque black so subtitle text that belongs to us is not read back.</summary>
+    public static void FillBlack(Span<byte> bgra, int stride, int x, int y, int width, int height, int frameWidth, int frameHeight)
+    {
+        if (width <= 0 || height <= 0 || frameWidth <= 0 || frameHeight <= 0) return;
+        int x0 = Math.Max(0, x);
+        int y0 = Math.Max(0, y);
+        int x1 = Math.Min(frameWidth, x + width);
+        int y1 = Math.Min(frameHeight, y + height);
+        for (int row = y0; row < y1; row++)
+        {
+            int o = row * stride + x0 * 4;
+            for (int col = x0; col < x1; col++)
+            {
+                bgra[o] = 0;
+                bgra[o + 1] = 0;
+                bgra[o + 2] = 0;
+                bgra[o + 3] = 255;
+                o += 4;
+            }
+        }
+    }
+
     /// <summary>White-text threshold → Gray8 (text black on white), which Windows OCR reads best.</summary>
     public static void ThresholdWhite(ReadOnlySpan<byte> bgra, int width, int height, int stride, Span<byte> gray, int threshold)
     {

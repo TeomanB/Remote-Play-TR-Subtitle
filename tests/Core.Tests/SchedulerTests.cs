@@ -126,21 +126,19 @@ public class SchedulerTests
     }
 
     [Fact]
-    public void RateLimitBacksOffExponentiallyWithEnglishFallback()
+    public void RateLimitBacksOffExponentiallyWithoutShowingEnglish()
     {
         var s = Make();
         s.Submit("Get in the car.");
         _be.Last.RateLimited();
-        Assert.True(_rec.LastShow!.Value.IsFallback);
-        Assert.Equal("Get in the car.", _rec.LastShow!.Value.Shown);
+        Assert.DoesNotContain(_rec.Updates, u => u.IsFallback);
         Assert.Equal(TranslationScheduler.RateLimitBackoffStart, s.CurrentBackoff);
 
         s.Tick();                                 // still in backoff
         Assert.Single(_be.Calls);
-        s.Submit("Where is Lucia?");              // new line during backoff: English, no request
+        s.Submit("Where is Lucia?");              // new line during backoff: no English, no request
         Assert.Single(_be.Calls);
-        Assert.Equal("Where is Lucia?", _rec.LastShow!.Value.Shown);
-        Assert.True(_rec.LastShow!.Value.IsFallback);
+        Assert.DoesNotContain(_rec.Updates, u => u.IsFallback || u.Shown == "Where is Lucia?");
 
         _clock.Advance(2001);
         s.Tick();                                 // retry latest
@@ -175,7 +173,7 @@ public class SchedulerTests
         var s = Make();
         s.Submit("Hello there");
         _be.Last.Throw();
-        Assert.True(_rec.LastShow!.Value.IsFallback);
+        Assert.DoesNotContain(_rec.Updates, u => u.IsFallback);
         Assert.Equal(TranslationScheduler.ErrorBackoffStart, s.CurrentBackoff);
         _clock.Advance(600); s.Tick();
         Assert.Equal(2, _be.Calls.Count);
@@ -193,8 +191,7 @@ public class SchedulerTests
         s.Submit("Get in");
         s.Submit("Get in the car");
         _be.Calls[0].Fail();
-        Assert.Equal("Get in the car", _rec.LastShow!.Value.Shown);
-        Assert.True(_rec.LastShow!.Value.IsFallback);
+        Assert.DoesNotContain(_rec.Updates, u => u.IsFallback || u.Shown == "Get in the car");
         Assert.Single(_be.Calls);
         _clock.Advance(600); s.Tick();
         Assert.Equal("Get in the car", _be.Last.Text);

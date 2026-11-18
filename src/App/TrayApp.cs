@@ -13,7 +13,10 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private readonly HotkeyWindow _hotkeys;
     private readonly OverlayForm _overlay;
     private readonly OverlayForm _goal;
-    private readonly GoogleTranslator _translator = new();
+    private readonly GoogleTranslator _google = new();
+    private readonly MyMemoryCeviri _yedekCeviri = new();
+    private readonly CeviriZinciri _translator;
+    private readonly YankiKalkan _yanki = new();
     private readonly TranslationProcessor _processor;
     private HazirKutuphane _hazir = HazirKutuphane.Bos;
     private MainWindow? _center;
@@ -51,6 +54,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         if (Ui.Theme.ForcedScale is float forced) Ui.Theme.SetScale(forced);
         else using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
         _settingsPath = AppPaths.SettingsFile;
+        _translator = new CeviriZinciri(_google, _yedekCeviri);
         _settings = AppSettings.Load(_settingsPath);
         var monitor = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
         if (_settings.YerlesikIpucu(monitor.X, monitor.Y, monitor.Width, monitor.Height))
@@ -60,6 +64,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _goal = new OverlayForm();
         _ = _overlay.Handle; // create handle on UI thread
         _ = _goal.Handle;
+        UygulaPaylasim();
 
         _hazir = HazirKutuphane.Yukle();
         _processor = new TranslationProcessor(_translator, _settings.ToProcessorOptions(_hazir));
@@ -168,6 +173,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             ConfigureGoal();
         }
         SyncEkOverlays();
+        UygulaPaylasim();
         _pipeline?.Dispose();
         DisposeEkPipes();
         // A new scheduler numbers displays from 1 again. Keeping the old high-water mark
@@ -252,14 +258,20 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
                 }
                 if (!_paused && _ocr != null && jobs.Count > 0)
                 {
-                    var texts = await _ocr.ReadFrameAsync(jobs.Select(j => (j.Slot, j.Region)).ToList(), _settings.BeyazYaziFiltresi, _settings.BeyazEsik).ConfigureAwait(false);
+                    var texts = await _ocr.ReadFrameAsync(jobs.Select(j => (j.Slot, j.Region)).ToList(), _settings.BeyazYaziFiltresi, _settings.BeyazEsik, GorunenKutular()).ConfigureAwait(false);
+                    var now = DateTime.UtcNow;
                     for (int i = 0; i < jobs.Count && i < texts.Length; i++)
                     {
                         string text = texts[i];
                         bool kabul = OcrGate.Kabul(text, _settings.HedefDil);
+                        if (kabul && _yanki.Yanki(text, now))
+                        {
+                            TanilamaLog.Yaz("yanki", "«" + text + "»");
+                            kabul = false;
+                        }
                         TanilamaLog.Yaz("ocr", jobs[i].Slot + " " + (kabul ? "kabul" : "red") + " «" + text + "»");
                         if (!kabul) text = string.Empty;
-                        jobs[i].Pipe.OnFrame(text, DateTime.UtcNow);
+                        jobs[i].Pipe.OnFrame(text, now);
                     }
                 }
                 errors = 0;
@@ -295,7 +307,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             if (u.Kind == DisplayKind.Hide || _paused || _selecting) { form.HideText(); return; }
             var alan = _settings.EkAlanlar?.FirstOrDefault(a => a.Id == id);
             if (alan != null) ConfigureEk(form, alan);
-            form.ShowText(u.Shown ?? string.Empty, u.IsFallback);
+            var ekMetin = u.Shown ?? string.Empty;
+            if (!u.IsFallback) _yanki.Not(ekMetin, DateTime.UtcNow);
+            form.ShowText(ekMetin, u.IsFallback);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "overlay-ek"); }
     }
@@ -385,6 +399,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             if (objective) ConfigureGoal();
             else _overlay.Configure(Region, _settings);
             _lastText = u.Shown ?? string.Empty;
+            if (!u.IsFallback) _yanki.Not(_lastText, DateTime.UtcNow);
             TanilamaLog.Yaz("goster", (objective ? "gorev" : "konusma") + (u.IsFallback ? " yedek" : "") + " «" + _lastText + "»");
             box.ShowText(_lastText, u.IsFallback);
         }
@@ -396,7 +411,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         try
         {
             _lastNetUse = DateTime.UtcNow;
-            await _translator.WarmUpAsync().ConfigureAwait(false);
+            await _google.WarmUpAsync().ConfigureAwait(false);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "warm"); }
     }
@@ -569,6 +584,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.HedefDil = e.HedefDil;
         _settings.OzelIsimleriKoru = e.OzelIsimleriKoru;
         _settings.BeyazYaziFiltresi = e.BeyazYaziFiltresi;
+        _settings.PaylasimdaGoster = e.PaylasimdaGoster;
         _settings.YaziBoyutu = e.YaziBoyutu;
         _settings.YaziRengi = e.YaziRengi;
         _settings.ArkaPlanOpakligi = e.ArkaPlanOpakligi;
@@ -619,6 +635,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _overlay.Configure(Region, _settings);
         _overlay.Refresh(text, fb);
         ConfigureGoal();
+        UygulaPaylasim();
 
         // Translation rules: new options, drop cached translations, re-translate the current line.
         _hazir = HazirKutuphane.Yukle();
@@ -662,6 +679,28 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         }
         OcrPaketiEksik = missing || _ocr == null || !_ocr.Matches(_settings.KaynakDil);
         return !OcrPaketiEksik;
+    }
+
+    private void UygulaPaylasim()
+    {
+        bool goster = _settings.PaylasimdaGoster;
+        _overlay.PaylasimAfinitesi(goster);
+        _goal.PaylasimAfinitesi(goster);
+        foreach (var form in _ekOverlays.Values) form.PaylasimAfinitesi(goster);
+    }
+
+    private List<EkranDikdortgen> GorunenKutular()
+    {
+        var list = new List<EkranDikdortgen>();
+        void Ekle(OverlayForm form)
+        {
+            if (form.TryScreenBox(out var box))
+                list.Add(new EkranDikdortgen(box.X, box.Y, box.Width, box.Height));
+        }
+        Ekle(_overlay);
+        Ekle(_goal);
+        foreach (var form in _ekOverlays.Values) Ekle(form);
+        return list;
     }
 
     private void ConfigureGoal()

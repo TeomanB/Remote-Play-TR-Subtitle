@@ -1182,6 +1182,10 @@ internal sealed partial class MainWindow : Form
             Refresh();
             SaveShot(dir, $"combo-inspector-{frame.Tag}.png");
             SaveOverlayCard(dir, $"combo-overlays-{frame.Tag}.png", frame.Scale);
+            ShowNav(3);
+            Arrange();
+            Refresh();
+            SaveShot(dir, $"paylasim-{frame.Tag}.png");
             ShotDrag(dir, frame.Tag, PreviewStage.ExtraOverlay, 140, 70, "ceviri");
             ShotDrag(dir, frame.Tag, PreviewStage.ExtraCapture, 90, 50, "okuma");
         }

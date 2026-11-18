@@ -108,7 +108,7 @@ public sealed class TranslationScheduler : IDisposable
             {
                 _pending = null;
                 if (_inflight != null && !TextUtil.AreRelated(_inflight.Text, text)) CancelInflight();
-                Show(seq, text, text, fallback: true);
+                TanilamaLog.Yaz("ceviri yok", "bekleme");
                 _needsRetry = true;
                 return;
             }
@@ -276,7 +276,7 @@ public sealed class TranslationScheduler : IDisposable
                     // while it was still the current one must be retried, or that line never translates.
                     if (stillOurs && IsRelevant(req.Text))
                     {
-                        if (req.Seq > _shownSeq) Show(req.Seq, req.Text, req.Text, fallback: true);
+                        TanilamaLog.Yaz("ceviri yok", "zaman-asimi");
                         _needsRetry = _latest != null;
                     }
                     return;
@@ -288,15 +288,10 @@ public sealed class TranslationScheduler : IDisposable
                     if (_backoff < start) _backoff = start;
                     if (outcome.RetryAfter is { } ra && ra > _backoff) _backoff = ra > RateLimitBackoffMax ? RateLimitBackoffMax : ra;
                     _backoffUntil = now + _backoff;
-                    if (IsRelevant(req.Text))
-                    {
-                        if (req.Seq > _shownSeq) Show(req.Seq, req.Text, req.Text, fallback: true);
-                        _needsRetry = _latest != null;
-                    }
+                    TanilamaLog.Yaz("ceviri yok", outcome.Status.ToString());
+                    if (IsRelevant(req.Text)) _needsRetry = _latest != null;
                     if (_pending != null)
                     {
-                        // Pending text can't go out yet: show it in English, retry later.
-                        Show(_pendingSeq, _pending, _pending, fallback: true);
                         _pending = null;
                         _needsRetry = true;
                     }

@@ -57,6 +57,7 @@ internal sealed partial class MainWindow
     private readonly UiButton _ocrBtn = new() { Text = "Kur", Kind = ButtonKind.Primary };
     private readonly UiDropdown _langDrop = new();
     private readonly UiToggle _whiteToggle = new();
+    private readonly UiToggle _shareToggle = new();
     private readonly UiToggle _startupToggle = new();
     private readonly UiToggle _autoUpdateToggle = new();
     private readonly UiButton _settingsBtn = new() { Text = "Göster" };
@@ -643,6 +644,8 @@ internal sealed partial class MainWindow
         _langDrop.SelectedChanged += (_, _) => { if (_langDrop.SelectedTag is string code) Patch(x => x.KaynakDil = code); RefreshAdvanced(); Invalidate(); };
         _whiteToggle.SetSilently(s.BeyazYaziFiltresi);
         _whiteToggle.CheckedChanged += (_, _) => Patch(x => x.BeyazYaziFiltresi = _whiteToggle.Checked);
+        _shareToggle.SetSilently(s.PaylasimdaGoster);
+        _shareToggle.CheckedChanged += (_, _) => Patch(x => x.PaylasimdaGoster = _shareToggle.Checked);
         _startupToggle.SetSilently(AutoStart.Enabled);
         _startupToggle.CheckedChanged += (_, _) =>
         {
@@ -688,6 +691,8 @@ internal sealed partial class MainWindow
                 y += Theme.D(6);
             }
             p.AddDivider(y, w);
+            y = Row(p, y, w, Ic.Globe, "Ekran paylaşımında altyazıyı göster (Discord, OBS)", "Açıkken Discord ve OBS altyazı kutusunu görür. Oyun yazısı yine de kendi çevirimizi okumaz.", _shareToggle, Theme.D(44), null);
+            p.AddDivider(y, w);
 
             bool missing = _host.OcrPaketiEksik;
             string code = OcrDilPaketi.Capability(cur.KaynakDil).Split('~')[3];
@@ -717,7 +722,7 @@ internal sealed partial class MainWindow
             y = Row(p, y, w, Ic.Info, "Tanıtımı tekrar göster", "Pencereyi adım adım anlatır. İlk açılışta bir kez kendiliğinden çıkar.", _tourBtn, Theme.D(84), null);
             return y;
         });
-        foreach (var c in new Control[] { _updateBtn, _skipBtn, _ocrBtn, _langDrop, _whiteToggle, _startupToggle, _autoUpdateToggle, _settingsBtn, _tourBtn })
+        foreach (var c in new Control[] { _updateBtn, _skipBtn, _ocrBtn, _langDrop, _whiteToggle, _shareToggle, _startupToggle, _autoUpdateToggle, _settingsBtn, _tourBtn })
             _advancedPage.Controls.Add(c);
     }
 

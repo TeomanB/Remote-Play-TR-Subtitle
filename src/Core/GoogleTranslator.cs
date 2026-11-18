@@ -69,7 +69,7 @@ public sealed class GoogleTranslator : ITranslateBackend, ILanguageBackend, IDis
         {
             using var resp = await _http.GetAsync(GoogleTranslateParser.BuildUrl(text, source, target, client), HttpCompletionOption.ResponseContentRead, ct)
                 .ConfigureAwait(false);
-            if (resp.StatusCode == HttpStatusCode.TooManyRequests || resp.StatusCode == HttpStatusCode.ServiceUnavailable
+            if (resp.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden or HttpStatusCode.ServiceUnavailable
                 || (resp.StatusCode == HttpStatusCode.Found && resp.Headers.Location?.AbsolutePath.Contains("sorry", StringComparison.OrdinalIgnoreCase) == true))
             {
                 TimeSpan? ra = resp.Headers.RetryAfter?.Delta;

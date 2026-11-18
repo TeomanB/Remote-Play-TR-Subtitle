@@ -26,6 +26,9 @@ internal sealed class OverlayForm : Form
     private string _family = "Segoe UI";
     private string _fontFamily = "";
     private AppSettings _look = new();
+    private bool _paylasimdaGoster = true;
+    private Rectangle _screenBox;
+    private readonly object _boxLock = new();
 
     public OverlayForm()
     {
@@ -60,8 +63,7 @@ internal sealed class OverlayForm : Form
     {
         base.OnHandleCreated(e);
         // Keep the overlay out of screen captures so we never OCR our own text (Win10 2004+).
-        try { Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE); }
-        catch (Exception ex) { Core.ErrorLog.Write(ex, "affinity"); }
+        UygulaAfinitesi();
     }
 
     public void Configure(Rectangle region, OverlayPlacement placement, float fontSize)
@@ -101,6 +103,29 @@ internal sealed class OverlayForm : Form
     public void Refresh(string? text, bool isFallback)
     {
         if (_shown && text != null) ShowText(text, isFallback);
+    }
+
+    /// <summary>Discord and OBS can see the overlay when <paramref name="goster"/> is true. Otherwise it stays out of capture.</summary>
+    public void PaylasimAfinitesi(bool goster)
+    {
+        _paylasimdaGoster = goster;
+        UygulaAfinitesi();
+    }
+
+    private void UygulaAfinitesi()
+    {
+        if (!IsHandleCreated) return;
+        try { Native.SetWindowDisplayAffinity(Handle, _paylasimdaGoster ? Native.WDA_NONE : Native.WDA_EXCLUDEFROMCAPTURE); }
+        catch (Exception ex) { Core.ErrorLog.Write(ex, "affinity"); }
+    }
+
+    public bool TryScreenBox(out Rectangle box)
+    {
+        lock (_boxLock)
+        {
+            box = _screenBox;
+            return _shown && box.Width > 0 && box.Height > 0;
+        }
     }
 
     public string? CurrentText => _shown ? _lastText : null;
@@ -144,6 +169,13 @@ internal sealed class OverlayForm : Form
             : SubtitleLayout.Legacy(_placement, region, screen, boxWidth, height, _offsetY);
         int x = placed.X;
         int y = placed.Y;
+        bool wasShown;
+        lock (_boxLock)
+        {
+            wasShown = _shown;
+            _screenBox = new Rectangle(x, y, boxWidth, height);
+            _shown = true;
+        }
 
         using var bmp = new Bitmap(boxWidth, height, PixelFormat.Format32bppPArgb);
         using (var g = Graphics.FromImage(bmp))
@@ -171,12 +203,11 @@ internal sealed class OverlayForm : Form
                 g.FillPath(fill, path);
         }
         ApplyBitmap(bmp, x, y);
-        if (!_shown)
+        if (!wasShown)
         {
             Native.ShowWindow(Handle, Native.SW_SHOWNOACTIVATE);
             Native.SetWindowPos(Handle, Native.HWND_TOPMOST, 0, 0, 0, 0,
                 Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
-            _shown = true;
         }
         else
         {
@@ -189,9 +220,9 @@ internal sealed class OverlayForm : Form
     public void HideText()
     {
         _lastText = null;
-        if (!_shown || !IsHandleCreated) return;
+        lock (_boxLock) _shown = false;
+        if (!IsHandleCreated) return;
         Native.ShowWindow(Handle, Native.SW_HIDE);
-        _shown = false;
     }
 
     private void ApplyBitmap(Bitmap bmp, int x, int y)

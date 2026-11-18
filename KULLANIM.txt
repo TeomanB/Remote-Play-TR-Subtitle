@@ -1,4 +1,4 @@
-﻿TERCÜMAN - KULLANIM  (sürüm 1.5.3 - yeni açık temalı kontrol merkezi)
+﻿TERCÜMAN - KULLANIM  (sürüm 1.5.4 - yeni açık temalı kontrol merkezi)
 ===========================
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
