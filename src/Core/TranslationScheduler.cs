@@ -2,7 +2,7 @@ namespace AltyaziCevirici.Core;
 
 public enum TranslateStatus { Ok, RateLimited, Failed, Cancelled, Skipped }
 
-public readonly record struct TranslateOutcome(TranslateStatus Status, string? Text = null, TimeSpan? RetryAfter = null, string? Detected = null);
+public readonly record struct TranslateOutcome(TranslateStatus Status, string? Text = null, TimeSpan? RetryAfter = null, string? Detected = null, string? Kind = null);
 
 public interface ITranslateBackend
 {
@@ -12,7 +12,7 @@ public interface ITranslateBackend
 public enum DisplayKind { Show, Hide }
 
 /// <param name="Seq">Strictly increasing display order number; a consumer must ignore updates older than the last applied one.</param>
-public readonly record struct DisplayUpdate(DisplayKind Kind, long Seq, string? English = null, string? Shown = null, bool IsFallback = false);
+public readonly record struct DisplayUpdate(DisplayKind Kind, long Seq, string? English = null, string? Shown = null, bool IsFallback = false, string? LineKind = null);
 
 /// <summary>
 /// Schedules translations with newest-wins semantics: at most 1 request in flight plus 1 pending (latest),
@@ -34,6 +34,7 @@ public sealed class TranslationScheduler : IDisposable
     private readonly Action<DisplayUpdate> _onDisplay;
     private readonly Func<DateTime> _clock;
     private readonly TimeSpan _minSpacing;
+    private readonly TimeSpan _callTimeout;
     private readonly object _lock = new();
 
     private long _seq;
@@ -59,13 +60,14 @@ public sealed class TranslationScheduler : IDisposable
     public static readonly TimeSpan ErrorBackoffMax = TimeSpan.FromSeconds(15);
 
     public TranslationScheduler(ITranslateBackend backend, TranslationCache cache, Action<DisplayUpdate> onDisplay,
-        Func<DateTime>? clock = null, TimeSpan? minSpacing = null)
+        Func<DateTime>? clock = null, TimeSpan? minSpacing = null, TimeSpan? callTimeout = null)
     {
         _backend = backend;
         _cache = cache;
         _onDisplay = onDisplay;
         _clock = clock ?? (() => DateTime.UtcNow);
         _minSpacing = minSpacing ?? TimeSpan.FromMilliseconds(60);
+        _callTimeout = callTimeout ?? TimeSpan.FromSeconds(8);
     }
 
     // ---- diagnostics for tests ----
@@ -94,10 +96,10 @@ public sealed class TranslationScheduler : IDisposable
             _latestSeq = seq;
             _needsRetry = false;
 
-            if (_cache.TryGet(text, out var cached))
+            if (_cache.TryGet(text, out var cached, out var cachedKind))
             {
                 _pending = null;
-                Show(seq, text, cached, fallback: false);
+                Show(seq, text, cached, fallback: false, cachedKind);
                 return;
             }
 
@@ -199,7 +201,25 @@ public sealed class TranslationScheduler : IDisposable
         InterlockedMax(ref _maxConcurrent, c);
         try
         {
-            outcome = await _backend.TranslateAsync(req.Text, req.Cts.Token).ConfigureAwait(false);
+            var work = _backend.TranslateAsync(req.Text, req.Cts.Token);
+            if (_callTimeout > TimeSpan.Zero && _callTimeout != Timeout.InfiniteTimeSpan)
+            {
+                using var timeout = new CancellationTokenSource(_callTimeout);
+                var gate = Task.Delay(_callTimeout, timeout.Token);
+                var finished = await Task.WhenAny(work, gate).ConfigureAwait(false);
+                if (finished == work)
+                {
+                    timeout.Cancel();
+                    _ = gate.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                    outcome = await work.ConfigureAwait(false);
+                }
+                else
+                {
+                    _ = work.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                    outcome = new TranslateOutcome(TranslateStatus.Cancelled);
+                }
+            }
+            else outcome = await work.ConfigureAwait(false);
             if (req.Cts.IsCancellationRequested && outcome.Status != TranslateStatus.Ok)
                 outcome = new TranslateOutcome(TranslateStatus.Cancelled);
         }
@@ -225,18 +245,19 @@ public sealed class TranslationScheduler : IDisposable
     {
         lock (_lock)
         {
-            if (_inflight == req) _inflight = null;
+            bool stillOurs = _inflight == req;
+            if (stillOurs) _inflight = null;
             if (_disposed) return;
             var now = _clock();
             switch (outcome.Status)
             {
                 case TranslateStatus.Ok when !string.IsNullOrEmpty(outcome.Text):
-                    _cache.Set(req.Text, outcome.Text!);
+                    _cache.Set(req.Text, outcome.Text!, outcome.Kind);
                     _backoff = TimeSpan.Zero;
                     _backoffUntil = DateTime.MinValue;
                     if (IsRelevant(req.Text) &&
                         (req.Seq > _shownSeq || (req.Seq == _shownSeq && _shownIsFallback)))
-                        Show(req.Seq, req.Text, outcome.Text!, fallback: false);
+                        Show(req.Seq, req.Text, outcome.Text!, fallback: false, outcome.Kind);
                     break;
                 case TranslateStatus.Skipped:
                     _backoff = TimeSpan.Zero;
@@ -249,7 +270,14 @@ public sealed class TranslationScheduler : IDisposable
                     }
                     break;
                 case TranslateStatus.Cancelled:
-                    return; // whoever cancelled already decided what runs next
+                    // A replaced in-flight call already decided the next step. A call that timed out
+                    // while it was still the current one must be retried, or that line never translates.
+                    if (stillOurs && IsRelevant(req.Text))
+                    {
+                        if (req.Seq > _shownSeq) Show(req.Seq, req.Text, req.Text, fallback: true);
+                        _needsRetry = _latest != null;
+                    }
+                    return;
                 default:
                     bool limited = outcome.Status == TranslateStatus.RateLimited;
                     var start = limited ? RateLimitBackoffStart : ErrorBackoffStart;
@@ -284,13 +312,13 @@ public sealed class TranslationScheduler : IDisposable
     private bool IsRelevant(string text) =>
         _latest != null && (TextUtil.Key(text) == _latestKey || TextUtil.AreRelated(text, _latest));
 
-    private void Show(long seq, string english, string shown, bool fallback)
+    private void Show(long seq, string english, string shown, bool fallback, string? lineKind = null)
     {
         if (seq < _shownSeq) return;
         _shownSeq = seq;
         _shownIsFallback = fallback;
         _visible = true;
-        SafeDisplay(new DisplayUpdate(DisplayKind.Show, ++_displaySeq, english, shown, fallback));
+        SafeDisplay(new DisplayUpdate(DisplayKind.Show, ++_displaySeq, english, shown, fallback, lineKind));
     }
 
     private void SafeDisplay(DisplayUpdate u)

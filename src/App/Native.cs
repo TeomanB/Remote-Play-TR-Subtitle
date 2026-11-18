@@ -64,6 +64,21 @@ internal static class Native
     [DllImport("gdi32.dll")]
     public static extern bool DeleteObject(IntPtr hObject);
 
+    public const int SRCCOPY = 0x00CC0020;
+    public const int HALFTONE = 4;
+
+    [DllImport("gdi32.dll", SetLastError = true)]
+    public static extern bool StretchBlt(IntPtr dest, int x, int y, int w, int h, IntPtr src, int sx, int sy, int sw, int sh, int rop);
+
+    [DllImport("gdi32.dll")]
+    public static extern int SetStretchBltMode(IntPtr hdc, int mode);
+
+    public const uint GR_GDIOBJECTS = 0;
+    [DllImport("user32.dll")]
+    public static extern int GetGuiResources(IntPtr process, uint flags);
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetCurrentProcess();
+
     public const int SW_HIDE = 0, SW_SHOWNOACTIVATE = 4;
 
     [DllImport("user32.dll")]

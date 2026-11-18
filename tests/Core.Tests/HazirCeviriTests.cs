@@ -54,6 +54,50 @@ public class HazirCeviriTests
     }
 
     [Fact]
+    public void MissingTypeStaysDialogueAndObjectiveIsKept()
+    {
+        var d = new HazirDizin("GTA 6", new (string, string, string)[]
+        {
+            ("Get in the car, we're late.", "Arabaya bin, geç kaldık.", "dialogue"),
+            ("Respray the Phoenix", "Phoenix'i yeniden boya.", "objective"),
+        });
+        Assert.Equal(("Arabaya bin, geç kaldık.", "dialogue"), d.Eslesme("Get in the car, we're late."));
+        Assert.Equal(("Phoenix'i yeniden boya.", "objective"), d.Eslesme("Respray the Phoenix"));
+        Assert.True(GorevSezici.Benzir("Respray the Phoenix"));
+        Assert.False(GorevSezici.Benzir("Get in the car, we're late."));
+        Assert.False(GorevSezici.Benzir("Meet me at Shore Court."));
+    }
+
+    [Fact]
+    public async Task ObjectivePackLineSkipsGoogleAndKeepsItsType()
+    {
+        var dir = new HazirDizin("GTA 6", new (string, string, string)[]
+        {
+            ("Respray the Phoenix", "Phoenix'i yeniden boya.", "objective"),
+            ("Respray the Phoenix please", "Lütfen boya.", "dialogue"),
+        });
+        var backend = new CountingBackend();
+        var proc = new TranslationProcessor(backend, new ProcessorOptions(Hazir: dir, SadeceHazir: true));
+        var hit = await proc.TranslateAsync("Respray the Phoenix", CancellationToken.None);
+        Assert.Equal("objective", hit.Kind);
+        Assert.Equal("Phoenix'i yeniden boya.", hit.Text);
+        var spoken = await proc.TranslateAsync("Respray the Phoenix please", CancellationToken.None);
+        Assert.Equal("dialogue", spoken.Kind);
+        Assert.Equal(0, backend.Calls);
+    }
+
+    [Fact]
+    public async Task UnmatchedHudLineIsMarkedObjectiveAfterGoogle()
+    {
+        var backend = new CountingBackend();
+        var proc = new TranslationProcessor(backend, new ProcessorOptions(SadeceHazir: false));
+        var hit = await proc.TranslateAsync("Respray the Phoenix", CancellationToken.None);
+        Assert.Equal(TranslateStatus.Ok, hit.Status);
+        Assert.Equal("objective", hit.Kind);
+        Assert.True(backend.Calls >= 1);
+    }
+
+    [Fact]
     public void ReadsATinyPackFromDisk()
     {
         var dir = Path.Combine(Path.GetTempPath(), "hazir-" + Guid.NewGuid().ToString("N"));

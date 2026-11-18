@@ -80,6 +80,14 @@ jobs:
             if (-not (Test-Path $file)) { throw "Missing $file" }
             if ((Get-Item $file).Length -lt 8KB) { throw "$file is too small" }
           }
+          $p3 = Start-Process -FilePath (Resolve-Path "publish\AltyaziCevirici.exe") -WorkingDirectory (Get-Location) -ArgumentList "--goal-shots","artifacts\ui" -PassThru
+          if (-not $p3.WaitForExit(120000)) { try { $p3.Kill() } catch {} ; throw "Goal screenshot timed out" }
+          if ($p3.ExitCode -ne 0) { throw "Goal screenshot exited $($p3.ExitCode)" }
+          foreach ($name in @("combo-preview-100.png","combo-preview-150.png","combo-inspector-100.png","combo-inspector-150.png","combo-overlays-100.png","combo-overlays-150.png")) {
+            $file = Join-Path "artifacts\ui" $name
+            if (-not (Test-Path $file)) { throw "Missing $file" }
+            if ((Get-Item $file).Length -lt 8KB) { throw "$file is too small" }
+          }
 
       - name: Upload UI screenshots
         uses: actions/upload-artifact@v4

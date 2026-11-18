@@ -89,6 +89,16 @@ public sealed class AppSettings
     /// <summary>Games whose misses must not call Google. A match still uses the pack.</summary>
     public List<string>? SadeceHazirPaket { get; set; }
 
+    // ---- v1.5.2 second overlay for HUD / objective lines. The capture region stays singular. ----
+    public bool GorevKonumAyarlandi { get; set; }
+    public int GorevKutuX { get; set; }
+    public int GorevKutuY { get; set; }
+    public int GorevKutuGenislik { get; set; }
+    public int GorevKutuYukseklik { get; set; }
+
+    /// <summary>Extra capture areas (İpucu and similar). Empty for a settings file from before 1.5.2; the main strip is unchanged.</summary>
+    public List<EkAlan>? EkAlanlar { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
@@ -149,6 +159,10 @@ public sealed class AppSettings
         DisCizgi = Math.Clamp(DisCizgi, 0, 16);
         KutuGenislik = KutuGenislik < SubtitleLayout.MinWidth ? 0 : Math.Clamp(KutuGenislik, SubtitleLayout.MinWidth, 8000);
         KutuYukseklik = KutuYukseklik <= 0 ? 0 : Math.Clamp(KutuYukseklik, 24, 800);
+        GorevKutuGenislik = GorevKutuGenislik <= 0 ? 0 : Math.Clamp(GorevKutuGenislik, 0, 8000);
+        GorevKutuYukseklik = GorevKutuYukseklik <= 0 ? 0 : Math.Clamp(GorevKutuYukseklik, 0, 800);
+        GorevKutuX = Math.Clamp(GorevKutuX, -8000, 16000);
+        GorevKutuY = Math.Clamp(GorevKutuY, -8000, 16000);
         KutuX = Math.Clamp(KutuX, -8000, 16000);
         KutuY = Math.Clamp(KutuY, -8000, 16000);
         BagilX = Math.Clamp(BagilX, -8000, 8000);
@@ -178,6 +192,21 @@ public sealed class AppSettings
         SadeceHazirPaket ??= new List<string>();
         SadeceHazirPaket.RemoveAll(string.IsNullOrWhiteSpace);
         for (int i = 0; i < SadeceHazirPaket.Count; i++) SadeceHazirPaket[i] = SadeceHazirPaket[i].Trim();
+        EnsureEkAlanlar();
+    }
+
+    /// <summary>Keeps at most <see cref="EkAlan.EnFazla"/> extra areas. Does not touch the main strip.</summary>
+    public void EnsureEkAlanlar()
+    {
+        EkAlanlar ??= new List<EkAlan>();
+        EkAlanlar.RemoveAll(a => a == null);
+        if (EkAlanlar.Count > EkAlan.EnFazla) EkAlanlar.RemoveRange(EkAlan.EnFazla, EkAlanlar.Count - EkAlan.EnFazla);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < EkAlanlar.Count; i++)
+        {
+            EkAlanlar[i].Clamp(i);
+            if (!ids.Add(EkAlanlar[i].Id)) EkAlanlar[i].Id = "ek" + (i + 1);
+        }
     }
 
     private static string CleanTag(string? v)

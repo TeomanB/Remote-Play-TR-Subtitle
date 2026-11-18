@@ -10,11 +10,13 @@ namespace AltyaziCevirici.Ui;
 /// </summary>
 internal sealed class PreviewStage : Control
 {
-    public const int Orig = 0, Trans = 1;
-    private static readonly string[] Names = { "Orijinal altyazı", "Çeviri" };
+    public const int Orig = 0, Trans = 1, Goal = 2;
+    public const int ExtraCapture = 100, ExtraOverlay = 200;
+    private static readonly string[] Names = { "Orijinal altyazı", "Çeviri", "Görev" };
 
-    private readonly Rectangle[] _box = new Rectangle[2];
-    private readonly bool[] _locked = new bool[2];
+    private readonly Rectangle[] _box = new Rectangle[3];
+    private readonly bool[] _locked = new bool[3];
+    private readonly List<PreviewExtra> _extras = new();
     private Bitmap? _frame;
     private Rectangle _source = new(0, 0, 1920, 1080);
     private int _selected = Trans;
@@ -44,7 +46,17 @@ internal sealed class PreviewStage : Control
 
     public Rectangle Source => _source;
     public int Selected => _selected;
-    public Rectangle Box(int i) => _box[i];
+    public Rectangle Box(int i) => Get(i);
+    public int ExtraCount => _extras.Count;
+    public PreviewExtra Extra(int i) => _extras[i];
+
+    public void SetExtras(IReadOnlyList<PreviewExtra> extras)
+    {
+        _extras.Clear();
+        foreach (var e in extras) _extras.Add(e.Copy());
+        if (ExtraIndex(_selected) >= _extras.Count) _selected = Trans;
+        Invalidate();
+    }
     /// <summary>Box rectangle in this control's client pixels, including where the handles sit.</summary>
     public Rectangle BoxClient(int i)
     {
@@ -53,7 +65,7 @@ internal sealed class PreviewStage : Control
         r.Inflate(10, 14);
         return r;
     }
-    public bool IsLocked(int i) => _locked[i];
+    public bool IsLocked(int i) => i >= 0 && i < _locked.Length && _locked[i];
     public bool HasFrame => _frame != null;
 
     public void SetFrame(Bitmap? frame, Rectangle source)
@@ -74,7 +86,7 @@ internal sealed class PreviewStage : Control
 
     public void SetBox(int i, Rectangle r)
     {
-        _box[i] = r;
+        Put(i, r);
         Invalidate();
     }
 
@@ -95,12 +107,35 @@ internal sealed class PreviewStage : Control
 
     public void SetLocked(int i, bool locked)
     {
+        if (i < 0 || i >= _locked.Length) return;
         _locked[i] = locked;
         Invalidate();
     }
 
-    public static int MinWidth(int i) => i == Trans ? SubtitleLayout.MinWidth : 40;
-    public static int MinHeight(int i) => i == Trans ? 24 : 16;
+    public static int MinWidth(int i) => i == Orig || (i >= ExtraCapture && i < ExtraOverlay) ? 40 : SubtitleLayout.MinWidth;
+    public static int MinHeight(int i) => i == Orig || (i >= ExtraCapture && i < ExtraOverlay) ? 16 : 24;
+
+    public static int ExtraIndexOf(int i) => i >= ExtraOverlay ? i - ExtraOverlay : i >= ExtraCapture ? i - ExtraCapture : -1;
+    private static int ExtraIndex(int i) => ExtraIndexOf(i);
+
+    private Rectangle Get(int i)
+    {
+        int extra = ExtraIndex(i);
+        if (extra >= 0 && extra < _extras.Count) return i >= ExtraOverlay ? _extras[extra].Overlay : _extras[extra].Capture;
+        return i >= 0 && i < _box.Length ? _box[i] : Rectangle.Empty;
+    }
+
+    private void Put(int i, Rectangle r)
+    {
+        int extra = ExtraIndex(i);
+        if (extra >= 0 && extra < _extras.Count)
+        {
+            if (i >= ExtraOverlay) _extras[extra].Overlay = r;
+            else _extras[extra].Capture = r;
+            return;
+        }
+        if (i >= 0 && i < _box.Length) _box[i] = r;
+    }
 
     // ---------------- mapping ----------------
 
@@ -122,15 +157,65 @@ internal sealed class PreviewStage : Control
         return new RectangleF(m.X + (r.X - _source.X) * s, m.Y + (r.Y - _source.Y) * s, r.Width * s, r.Height * s);
     }
 
-    private RectangleF TagRect(int i)
+    private string LabelOf(int i)
     {
-        var b = ToClient(_box[i]);
-        string text = Names[i];
-        int w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (_locked[i] ? Theme.D(14) : 0);
+        int extra = ExtraIndex(i);
+        if (extra >= 0 && extra < _extras.Count)
+            return i >= ExtraOverlay ? _extras[extra].Name + " · çeviri" : _extras[extra].Name;
+        return i >= 0 && i < Names.Length ? Names[i] : "";
+    }
+
+    private Color ColorOf(int i)
+    {
+        int extra = ExtraIndex(i);
+        if (extra >= 0 && extra < _extras.Count && AppSettings.TryParseColor(_extras[extra].ColorHex, out var rgb))
+            return Color.FromArgb(255, rgb.R, rgb.G, rgb.B);
+        return i == Goal ? Theme.Hex(0x7A4FBF) : i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+    }
+
+    private IEnumerable<int> TagOrder()
+    {
+        yield return Orig;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraCapture + i;
+        yield return Trans;
+        yield return Goal;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraOverlay + i;
+    }
+
+    /// <summary>Capture tags sit inside the box. Translation tags sit above it. Later tags step down so two labels never share a pixel.</summary>
+    private RectangleF TagRect(int wanted)
+    {
+        var placed = new List<RectangleF>();
+        RectangleF found = RectangleF.Empty;
+        foreach (int i in TagOrder())
+        {
+            if (Get(i).IsEmpty) continue;
+            var tag = ProposeTag(i, placed);
+            placed.Add(tag);
+            if (i == wanted) found = tag;
+        }
+        return found;
+    }
+
+    private RectangleF ProposeTag(int i, List<RectangleF> placed)
+    {
+        var b = ToClient(Get(i));
+        string text = LabelOf(i);
+        float w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (IsLocked(i) ? Theme.D(14) : 0);
         float h = Theme.D(19);
-        float y = b.Y - h - Theme.D(5);
-        if (y < Theme.D(2)) y = b.Bottom + Theme.D(5);
-        return new RectangleF(b.X - 1, y, w, h);
+        bool capture = i == Orig || (i >= ExtraCapture && i < ExtraOverlay);
+        w = Math.Min(w, Math.Max(Theme.D(28), b.Width - Theme.D(6)));
+        h = Math.Min(h, Math.Max(Theme.D(11), b.Height - Theme.D(4)));
+        RectangleF tag = capture
+            ? new RectangleF(b.X + Theme.D(3), b.Y + Theme.D(2), w, h)
+            : new RectangleF(b.X, b.Y - h - Theme.D(3), w, h);
+        if (!capture && tag.Y < Theme.D(2)) tag.Y = b.Y + Theme.D(2);
+        for (int n = 0; n < 10 && placed.Any(p => p.IntersectsWith(RectangleF.Inflate(tag, 2, 2))); n++)
+        {
+            tag.X += Theme.D(10);
+            if (tag.X > b.Right) { tag.X = b.X; tag.Y += h + Theme.D(2); }
+        }
+        return tag;
     }
 
     private static PointF[] HandlePoints(RectangleF b) => new PointF[]
@@ -146,15 +231,29 @@ internal sealed class PreviewStage : Control
     };
 
     /// <summary>Hit test, top box first. Part: -3 tag, -1 body, 0..7 handles.</summary>
+    private IEnumerable<int> HitOrder()
+    {
+        yield return _selected;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraOverlay + i;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraCapture + i;
+        yield return Goal;
+        yield return Trans;
+        yield return Orig;
+    }
+
     private (int Box, int Part) Hit(Point p)
     {
-        int[] order = { _selected, 1 - _selected };
-        foreach (int i in order)
-            if (!_box[i].IsEmpty && TagRect(i).Contains(p)) return (i, -3);
-        foreach (int i in order)
+        var seen = new HashSet<int>();
+        foreach (int i in HitOrder())
         {
-            if (_box[i].IsEmpty || _locked[i]) continue;
-            var b = ToClient(_box[i]);
+            if (!seen.Add(i) || Get(i).IsEmpty) continue;
+            if (TagRect(i).Contains(p)) return (i, -3);
+        }
+        seen.Clear();
+        foreach (int i in HitOrder())
+        {
+            if (!seen.Add(i) || Get(i).IsEmpty || IsLocked(i)) continue;
+            var b = ToClient(Get(i));
             if (i == _selected)
             {
                 var pts = HandlePoints(b);
@@ -178,10 +277,10 @@ internal sealed class PreviewStage : Control
         if (box < 0)
         {
             // Nothing there yet: draw the OCR strip directly (first run without a region).
-            if (_box[Orig].IsEmpty && Map().Contains(e.Location))
+            if (Get(Orig).IsEmpty && Map().Contains(e.Location))
             {
                 var p = ToSource(e.Location);
-                _box[Orig] = new Rectangle(p.X, p.Y, 1, 1);
+                Put(Orig, new Rectangle(p.X, p.Y, 1, 1));
                 Select(Orig);
                 Begin(Orig, 4, e.Location, live: true);
             }
@@ -197,7 +296,7 @@ internal sealed class PreviewStage : Control
         _dragBox = box;
         _dragPart = part;
         _grab = at;
-        _grabRect = _box[box];
+        _grabRect = Get(box);
         _live = live;
         Capture = true;
     }
@@ -226,7 +325,7 @@ internal sealed class PreviewStage : Control
         }
         float s = _source.Width / Math.Max(1f, Map().Width);
         int dx = (int)Math.Round((e.X - _grab.X) * s), dy = (int)Math.Round((e.Y - _grab.Y) * s);
-        _box[_dragBox] = Apply(_grabRect, _dragPart, dx, dy, _dragBox);
+        Put(_dragBox, Apply(_grabRect, _dragPart, dx, dy, _dragBox));
         Invalidate();
         BoxesChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -263,8 +362,8 @@ internal sealed class PreviewStage : Control
         int step = e.Shift ? 10 : 1;
         int dx = e.KeyCode == Keys.Left ? -step : e.KeyCode == Keys.Right ? step : 0;
         int dy = e.KeyCode == Keys.Up ? -step : e.KeyCode == Keys.Down ? step : 0;
-        if ((dx == 0 && dy == 0) || _locked[_selected] || _box[_selected].IsEmpty) return;
-        _box[_selected] = Apply(_box[_selected], -1, dx, dy, _selected);
+        if ((dx == 0 && dy == 0) || IsLocked(_selected) || Get(_selected).IsEmpty) return;
+        Put(_selected, Apply(Get(_selected), -1, dx, dy, _selected));
         Invalidate();
         BoxesChanged?.Invoke(this, EventArgs.Empty);
         BoxesCommitted?.Invoke(this, EventArgs.Empty);
@@ -312,20 +411,30 @@ internal sealed class PreviewStage : Control
         }
         else Placeholder.Draw(g, m);
 
-        int first = 1 - _selected;
-        DrawBox(g, first);
+        for (int i = 0; i < _extras.Count; i++)
+        {
+            if (ExtraCapture + i == _selected || ExtraOverlay + i == _selected) continue;
+            DrawBox(g, ExtraCapture + i);
+            DrawBox(g, ExtraOverlay + i);
+        }
+        for (int i = 0; i < _box.Length; i++) if (i != _selected) DrawBox(g, i);
         DrawBox(g, _selected);
-        // Tags last: the box underneath stays reachable by its label even when the other box covers it.
-        DrawTag(g, first);
+        for (int i = 0; i < _extras.Count; i++)
+        {
+            if (ExtraCapture + i == _selected || ExtraOverlay + i == _selected) continue;
+            DrawTag(g, ExtraCapture + i);
+            DrawTag(g, ExtraOverlay + i);
+        }
+        for (int i = 0; i < _box.Length; i++) if (i != _selected) DrawTag(g, i);
         DrawTag(g, _selected);
         g.Restore(state);
     }
 
     private void DrawTag(Graphics g, int i)
     {
-        if (_box[i].IsEmpty) return;
-        bool sel = i == _selected, locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        if (Get(i).IsEmpty) return;
+        bool sel = i == _selected, locked = IsLocked(i);
+        var color = ColorOf(i);
         float fade = !sel && locked ? 0.75f : 1f;
         var tag = TagRect(i);
         var tagFill = sel ? color : Theme.Mix(color, Theme.Stage, 0.3f);
@@ -336,20 +445,26 @@ internal sealed class PreviewStage : Control
             Theme.Glyph(g, Ic.Lock, Theme.Icon12, new Rectangle(tx - Theme.D(1), (int)tag.Y, Theme.D(13), (int)tag.Height), Theme.TagInk);
             tx += Theme.D(14);
         }
-        Theme.Text(g, Names[i], Theme.Tag, new Rectangle(tx, (int)tag.Y, (int)tag.Right - tx, (int)tag.Height), Theme.TagInk);
+        Theme.Text(g, LabelOf(i), Theme.Tag, new Rectangle(tx, (int)tag.Y, (int)tag.Right - tx, (int)tag.Height), Theme.TagInk);
     }
 
     private void DrawBox(Graphics g, int i)
     {
-        if (_box[i].IsEmpty) return;
-        var b = ToClient(_box[i]);
+        if (Get(i).IsEmpty) return;
+        var b = ToClient(Get(i));
         bool sel = i == _selected;
-        bool locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        bool locked = IsLocked(i);
+        var color = ColorOf(i);
         float fade = !sel && locked ? 0.75f : 1f;
         var line = Theme.Alpha(color, (int)(255 * fade));
 
-        if (i == Trans) DrawSample(g, b);
+        if (i == Trans) DrawSample(g, b, _sample, null, null);
+        else if (i == Goal) DrawSample(g, b, "Phoenix'i yeniden boya.", "#EDE4FF", "#7A4FBF");
+        else if (i >= ExtraOverlay)
+        {
+            var extra = _extras[i - ExtraOverlay];
+            DrawSample(g, b, extra.Sample, "#FFF1F4", extra.ColorHex);
+        }
 
         float radius = Theme.D(7);
         if (sel)
@@ -379,35 +494,44 @@ internal sealed class PreviewStage : Control
     }
 
     /// <summary>Sample Turkish line with the overlay's font, color, outline, and background opacity, scaled to the preview.</summary>
-    private void DrawSample(Graphics g, RectangleF b)
+    private void DrawSample(Graphics g, RectangleF b, string? text, string? textColor, string? outlineColor)
     {
         float k = Zoom;
         int alpha = (int)Math.Round(Math.Clamp(_look.ArkaPlanOpakligi, 0, 100) * 2.55);
         if (alpha > 0) Theme.FillRound(g, b, Theme.D(6), Color.FromArgb(alpha, 10, 10, 14));
-        if (string.IsNullOrWhiteSpace(_sample)) return;
+        if (string.IsNullOrWhiteSpace(text)) return;
 
         string family = SubtitleFonts.Resolve(_look.YaziTipi);
-        float em = Math.Max(4f, _look.YaziBoyutu * k);
-        using var font = new Font(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near };
-        float padX = 18 * k;
-        var layout = new RectangleF(b.X + padX, b.Y, Math.Max(10, b.Width - 2 * padX), b.Height);
-        var size = g.MeasureString(_sample, font, (int)layout.Width, fmt);
-        layout.Y = b.Y + Math.Max(0, (b.Height - size.Height) / 2f);
-        layout.Height = Math.Max(size.Height + 2, b.Height);
+        float padX = Math.Max(6f, 12 * k);
+        float padY = Math.Max(2f, 4 * k);
+        float maxW = Math.Max(10, b.Width - 2 * padX);
+        float maxH = Math.Max(8, b.Height - 2 * padY);
+        using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        float em = Math.Max(8f, _look.YaziBoyutu * k);
+        Font font = new(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
+        SizeF size = g.MeasureString(text, font, (int)maxW, fmt);
+        while (em > 6f && size.Height > maxH)
+        {
+            em -= 1f;
+            font.Dispose();
+            font = new Font(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
+            size = g.MeasureString(text, font, (int)maxW, fmt);
+        }
+        using var _font = font;
+        var layout = new RectangleF(b.X + padX, b.Y + Math.Max(0, (b.Height - size.Height) / 2f), maxW, Math.Max(size.Height, maxH));
 
         var state = g.Save();
         g.SetClip(RectangleF.Inflate(b, 2, 2), CombineMode.Intersect);
         using var path = new GraphicsPath();
-        path.AddString(_sample, font.FontFamily, (int)FontStyle.Bold, em, layout, fmt);
+        path.AddString(text, font.FontFamily, (int)FontStyle.Bold, em, layout, fmt);
         float outline = Math.Clamp(_look.DisCizgi, 0, 16) * k;
         if (outline > 0.2f)
         {
-            var oc = AppSettings.TryParseColor(_look.DisCizgiRengi, out var c2) ? Color.FromArgb(255, c2.R, c2.G, c2.B) : Color.Black;
+            var oc = AppSettings.TryParseColor(outlineColor ?? _look.DisCizgiRengi, out var c2) ? Color.FromArgb(255, c2.R, c2.G, c2.B) : Color.Black;
             using var pen = new Pen(oc, outline) { LineJoin = LineJoin.Round };
             g.DrawPath(pen, path);
         }
-        var fc = AppSettings.TryParseColor(_look.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
+        var fc = AppSettings.TryParseColor(textColor ?? _look.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
         using (var fill = new SolidBrush(fc)) g.FillPath(fill, path);
         g.Restore(state);
     }
@@ -417,6 +541,19 @@ internal sealed class PreviewStage : Control
         if (disposing) { _frame?.Dispose(); _frame = null; }
         base.Dispose(disposing);
     }
+}
+
+internal sealed class PreviewExtra
+{
+    public string Id = "";
+    public string Name = "";
+    public string ColorHex = "#E8456B";
+    public bool Enabled = true;
+    public Rectangle Capture;
+    public Rectangle Overlay;
+    public string Sample = "Türbine bakmak için R3'e bas.";
+
+    public PreviewExtra Copy() => (PreviewExtra)MemberwiseClone();
 }
 
 /// <summary>Game-like scene shown when no screen frame is available yet.</summary>
