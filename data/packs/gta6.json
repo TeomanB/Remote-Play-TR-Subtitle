@@ -1066,6 +1066,105 @@
         "https://www.rockstargames.com/VI/only-in-leonida"
       ],
       "note": "Resmi Rockstar metni; Ultimate Edition silah metni"
+    },
+    {
+      "term": "The Chamber",
+      "type": "protect",
+      "tr": "",
+      "category": "radio",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Keys",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Vapid",
+      "type": "protect",
+      "tr": "",
+      "category": "brand",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Cheetah",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Trick",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "MW",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Hawk",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Crest",
+      "type": "protect",
+      "tr": "",
+      "category": "brand",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
+    },
+    {
+      "term": "Mudslide",
+      "type": "protect",
+      "tr": "",
+      "category": "item",
+      "caseSensitive": true,
+      "sources": [
+        "https://www.rockstargames.com/VI"
+      ],
+      "note": "Belirsiz İngilizce kelime; yalnız bu büyük harfle yazıldığında korunur."
     }
   ]
 }

@@ -12,11 +12,12 @@ public sealed class SozlukKaydi
     [JsonPropertyName("tr")] public string? Tr { get; set; }
     [JsonPropertyName("category")] public string? Category { get; set; }
     [JsonPropertyName("sources")] public List<string>? Sources { get; set; }
+    [JsonPropertyName("caseSensitive")] public bool CaseSensitive { get; set; }
 
     public SozlukGirdisi ToGirdi()
     {
         bool translate = Type.Equals("translate", StringComparison.OrdinalIgnoreCase);
-        return new SozlukGirdisi(Term, translate ? (Tr ?? "") : "");
+        return new SozlukGirdisi(Term, translate ? (Tr ?? "") : "") { CaseSensitive = CaseSensitive };
     }
 }
 

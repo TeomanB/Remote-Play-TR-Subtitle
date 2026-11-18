@@ -9,6 +9,8 @@ public sealed class SozlukGirdisi
 {
     public string Ingilizce { get; set; } = string.Empty;
     public string Turkce { get; set; } = string.Empty;
+    /// <summary>When true, only the exact capitalisation matches. Lowercase stays a normal word.</summary>
+    public bool CaseSensitive { get; set; }
 
     public SozlukGirdisi() { }
     public SozlukGirdisi(string en, string tr = "") { Ingilizce = en; Turkce = tr; }
@@ -36,7 +38,7 @@ public sealed class TermProtector
         public bool StartsWithTerm => Terms.Count > 0 && Text.TrimStart().StartsWith(Terms[0].Token, StringComparison.Ordinal);
     }
 
-    private readonly List<(Regex Rx, string Output)> _glossary = new();
+    private readonly List<(Regex Rx, string Exact, string Output, bool CaseSensitive, int Words)> _glossary = new();
     private readonly bool _properNouns;
 
     public TermProtector(IEnumerable<SozlukGirdisi>? glossary, bool properNouns)
@@ -49,17 +51,18 @@ public sealed class TermProtector
             var en = g.Ingilizce.Trim();
             var tr = (g.Turkce ?? string.Empty).Trim();
             var output = tr.Length == 0 ? en : tr;
-            AddPattern(Fold(en).Text, output);
+            AddPattern(Fold(en).Text, output, g.CaseSensitive);
             // OCR often reads the dollar sign in "PTT Youngin$" as S.
-            if (en.Contains('$')) AddPattern(Fold(en.Replace("$", "S", StringComparison.Ordinal)).Text, output);
+            if (en.Contains('$')) AddPattern(Fold(en.Replace("$", "S", StringComparison.Ordinal)).Text, output, g.CaseSensitive);
         }
     }
 
-    private void AddPattern(string foldedTerm, string output)
+    private void AddPattern(string foldedTerm, string output, bool caseSensitive)
     {
-        var pattern = string.Join(@"\s+", foldedTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape));
+        var parts = foldedTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var pattern = string.Join(@"\s+", parts.Select(Regex.Escape));
         var rx = new Regex($@"(?<![\p{{L}}\p{{N}}]){pattern}(?![\p{{L}}\p{{N}}])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        _glossary.Add((rx, output));
+        _glossary.Add((rx, foldedTerm, output, caseSensitive, parts.Length));
     }
 
     /// <summary>Strips accents so "Andrés" and "Andres" compare equal. Index map points back at the original string.</summary>
@@ -83,27 +86,40 @@ public sealed class TermProtector
 
     public Masked Protect(string text, bool startsMidSentence = false)
     {
-        var spans = new List<(int Start, int Len, string Output)>();
+        var spans = new List<(int Start, int Len, string Output, bool AmbiguousSingle)>();
         var (folded, map) = Fold(text);
-        foreach (var (rx, output) in _glossary)
+        bool allCaps = IsAllCaps(text);
+        foreach (var (rx, exact, output, caseSensitive, words) in _glossary)
             foreach (Match m in rx.Matches(folded))
             {
                 if (m.Length == 0 || m.Index >= map.Length) continue;
                 int start = map[m.Index];
                 int end = map[m.Index + m.Length - 1] + 1;
+                if (caseSensitive)
+                {
+                    // Ambiguous single words ("Cheetah", "Keys") only when capitalised exactly.
+                    // An all-caps line has no casing, so those singles are left for translation.
+                    if (allCaps && words == 1) continue;
+                    var slice = Fold(text[start..end]).Text;
+                    if (!allCaps && !slice.Equals(exact, StringComparison.Ordinal)) continue;
+                }
                 if (!Overlaps(spans, start, end - start))
-                    spans.Add((start, end - start, output));
+                    spans.Add((start, end - start, output, caseSensitive && words == 1));
             }
         if (_properNouns)
             foreach (var (s, l) in ProperNouns(text, startsMidSentence))
-                if (!Overlaps(spans, s, l)) spans.Add((s, l, text.Substring(s, l)));
+                if (!Overlaps(spans, s, l)) spans.Add((s, l, text.Substring(s, l), false));
+        // A capitalised ambiguous word at the start of a sentence is protected only when a name follows it.
+        spans.RemoveAll(s => s.AmbiguousSingle
+            && AtSentenceStart(text, s.Start, startsMidSentence)
+            && !spans.Any(other => other.Start == NextWord(text, s.Start + s.Len)));
 
         if (spans.Count == 0) return new Masked(text, Array.Empty<Term>());
         spans.Sort((a, b) => a.Start.CompareTo(b.Start));
         var sb = new StringBuilder();
         var terms = new List<Term>();
         int pos = 0;
-        foreach (var (start, len, output) in spans)
+        foreach (var (start, len, output, _) in spans)
         {
             if (terms.Count >= Tokens.Length) break;
             var tok = Tokens[terms.Count];
@@ -115,8 +131,30 @@ public sealed class TermProtector
         return new Masked(sb.ToString(), terms);
     }
 
-    private static bool Overlaps(List<(int Start, int Len, string Output)> spans, int s, int l) =>
+    private static bool Overlaps(List<(int Start, int Len, string Output, bool AmbiguousSingle)> spans, int s, int l) =>
         spans.Any(x => s < x.Start + x.Len && x.Start < s + l);
+
+    private static int NextWord(string text, int index)
+    {
+        while (index < text.Length && char.IsWhiteSpace(text[index])) index++;
+        return index;
+    }
+
+    private static bool AtSentenceStart(string text, int index, bool startsMidSentence)
+    {
+        int k = index - 1;
+        while (k >= 0 && (char.IsWhiteSpace(text[k]) || text[k] is '"' or '\'' or '(' or '“' or '«')) k--;
+        if (k < 0) return !startsMidSentence;
+        return text[k] is '.' or '!' or '?' or ':' or ';' or '…' or '—' or '-';
+    }
+
+    private static bool IsAllCaps(string text)
+    {
+        int letters = 0, upper = 0;
+        foreach (char c in text)
+            if (char.IsLetter(c)) { letters++; if (char.IsUpper(c)) upper++; }
+        return letters > 0 && upper > letters * 0.6;
+    }
 
     /// <summary>Puts the real terms back. Returns null when the translator dropped or mangled a placeholder.</summary>
     public static string? Restore(string translated, Masked masked)
@@ -161,9 +199,7 @@ public sealed class TermProtector
     /// <summary>Capitalized words that are not at a sentence start (merged into multi-word names), e.g. "Port Gellhorn".</summary>
     public static IEnumerable<(int Start, int Len)> ProperNouns(string text, bool startsMidSentence = false)
     {
-        int letters = 0, upper = 0;
-        foreach (char c in text) if (char.IsLetter(c)) { letters++; if (char.IsUpper(c)) upper++; }
-        if (letters == 0 || upper > letters * 0.6) yield break; // ALL-CAPS subtitles: no casing information
+        if (IsAllCaps(text)) yield break; // ALL-CAPS subtitles: no casing information
 
         var words = Word.Matches(text).Cast<Match>().ToList();
         var flags = new bool[words.Count];
@@ -174,15 +210,16 @@ public sealed class TermProtector
             if (core.Length < 2 || !char.IsUpper(core[0]) || !core.Skip(1).Any(char.IsLower)) continue;
             if (NotNames.Contains(core) || NotNames.Contains(w.Value)) continue;
             if (IsSentenceStart(text, words, i, startsMidSentence)) continue;
-            flags[i] = true;
+            flags[i] = true; // candidate; common words survive only inside a multi-word name
         }
         for (int i = 0; i < words.Count; i++)
         {
             if (!flags[i]) continue;
             int j = i;
-            // merge "Port Gellhorn", "Vice City" (single spaces, previous word not possessive)
+            // merge "Port Gellhorn", "Shore Court" (single spaces, previous word not possessive)
             while (j + 1 < words.Count && flags[j + 1] && OnlySpaceBetween(text, words[j], words[j + 1])
                    && StripPossessive(words[j].Value) == words[j].Value) j++;
+            if (j == i && EnglishWords.IsCommon(StripPossessive(words[i].Value))) { flags[i] = false; continue; }
             int start = words[i].Index;
             var lastCore = StripPossessive(words[j].Value);
             int end = words[j].Index + lastCore.Length;

@@ -9,4 +9,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <DebugType Condition="'$(Configuration)'=='Release'">none</DebugType>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="english-common.txt" LogicalName="AltyaziCevirici.Core.english-common.txt" />
+  </ItemGroup>
 </Project>

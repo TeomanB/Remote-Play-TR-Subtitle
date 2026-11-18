@@ -247,7 +247,7 @@ internal sealed class MainWindow : Form
             src.Controls.Add(b);
         }
         flow.Controls.Add(src);
-        flow.Controls.Add(ToggleRow("Cümle ortasındaki isimleri koru", _host.Current.OzelIsimleriKoru, v => Patch(s => s.OzelIsimleriKoru = v)));
+        flow.Controls.Add(ToggleRow("Büyük harfli isimleri koru", _host.Current.OzelIsimleriKoru, v => Patch(s => s.OzelIsimleriKoru = v)));
         flow.Controls.Add(ToggleRow("Beyaz yazı filtresi", _host.Current.BeyazYaziFiltresi, v => Patch(s => s.BeyazYaziFiltresi = v)));
         return flow;
     }

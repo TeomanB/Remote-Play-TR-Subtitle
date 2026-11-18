@@ -80,14 +80,63 @@ public class SozlukPaketTests
     {
         var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "packs", "gta6.json"));
         var pack = SozlukKutuphanesi.OkuGta(json);
-        Assert.Equal(102, pack!.Entries.Count);
+        Assert.Equal(111, pack!.Entries.Count);
         Assert.All(pack.Entries, e => Assert.Equal("protect", e.Type));
         foreach (var term in new[] { "Vice City", "Leonida", "Leonida Keys", "Port Gellhorn", "Grassrivers", "Ambrosia", "Mount Kalaga", "Jason", "Lucia" })
             Assert.Contains(pack.Entries, e => e.Term == term);
-        foreach (var banned in new[] { "Starfish Island", "Valentina", "Vice Beach", "Vapid", "Cheetah", "The Chamber" })
+        foreach (var banned in new[] { "Starfish Island", "Valentina", "Vice Beach", "Lickety Split" })
             Assert.DoesNotContain(pack.Entries, e => e.Term == banned);
+        foreach (var ambiguous in new[] { "The Chamber", "Keys", "Vapid", "Cheetah", "Trick", "MW", "Hawk", "Crest", "Mudslide" })
+            Assert.Contains(pack.Entries, e => e.Term == ambiguous && e.CaseSensitive);
         Assert.Contains(pack.Entries, e => e.Term == "Mount Kalaga National Park" && e.Type == "protect" && string.IsNullOrEmpty(e.Tr));
         Assert.Contains(pack.Entries, e => e.Term == "Leonida Penitentiary" && e.Type == "protect" && string.IsNullOrEmpty(e.Tr));
+    }
+
+    [Fact]
+    public async Task CaseAndProperNounRules()
+    {
+        var glossary = new[]
+        {
+            new SozlukGirdisi("Cheetah") { CaseSensitive = true },
+            new SozlukGirdisi("The Chamber") { CaseSensitive = true },
+            new SozlukGirdisi("Keys") { CaseSensitive = true },
+            new SozlukGirdisi("Leonida Keys"),
+        };
+        var b = new DictBackend(new());
+        var p = new TranslationProcessor(b, new ProcessorOptions(Glossary: glossary));
+
+        var lower = await p.TranslateAsync("The cheetah ran.", CancellationToken.None);
+        Assert.DoesNotContain("Zelvar", b.Sent[0]);
+        Assert.Contains("cheetah", lower.Text, StringComparison.OrdinalIgnoreCase);
+
+        b.Sent.Clear();
+        var kept = await p.TranslateAsync("Get in the Cheetah.", CancellationToken.None);
+        Assert.Contains("Zelvar", b.Sent[0]);
+        Assert.Contains("Cheetah", kept.Text);
+        Assert.DoesNotContain("Zelvar", kept.Text);
+
+        b.Sent.Clear();
+        var start = await p.TranslateAsync("Cheetah ran fast.", CancellationToken.None);
+        Assert.DoesNotContain("Zelvar", b.Sent[^1]);
+        Assert.Contains("Cheetah", start.Text);
+
+        b.Sent.Clear();
+        var caps = await p.TranslateAsync("GET IN THE CHEETAH.", CancellationToken.None);
+        Assert.DoesNotContain("Zelvar", b.Sent[^1]);
+
+        b.Sent.Clear();
+        var multi = await p.TranslateAsync("MEET AT LEONIDA KEYS.", CancellationToken.None);
+        Assert.Contains("Zelvar", b.Sent[^1]);
+        Assert.Contains("Leonida Keys", multi.Text);
+
+        b.Sent.Clear();
+        var chamber = await p.TranslateAsync("The Chamber is open.", CancellationToken.None);
+        Assert.Contains("Zelvar", b.Sent[^1]);
+        Assert.Contains("The Chamber", chamber.Text);
+
+        var names = new TranslationProcessor(new DictBackend(new()), new ProcessorOptions(Glossary: Array.Empty<SozlukGirdisi>()));
+        var shore = await names.TranslateAsync("Meet me at Shore Court.", CancellationToken.None);
+        Assert.Contains("Shore Court", shore.Text);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 # GTA VI sözlük paketi: kaynaklar ve doğrulama (18 Kasım 2026)
 
-> Uygulama notu: `Mount Kalaga National Park` ve `Leonida Penitentiary` pakette `protect` olarak durur. Önerilen Türkçe karşılıklar resmi olmadığı için kullanılmaz. Eşleştirme aksanları yok sayar; `PTT Youngin$` OCR'da `$` yerine `S` okunursa da korunur.
+> Uygulama notu: `Mount Kalaga National Park` ve `Leonida Penitentiary` pakette `protect` olarak durur. Önerilen Türkçe karşılıklar resmi olmadığı için kullanılmaz. Eşleştirme aksanları yok sayar; `PTT Youngin$` OCR'da `$` yerine `S` okunursa da korunur. `The Chamber`, `Keys`, `Vapid`, `Cheetah`, `Trick`, `MW`, `Hawk`, `Crest` ve `Mudslide` büyük harf duyarlıdır: yalnız altyazıda bu biçimde yazılırlarsa korunur.
 
 ## Özet
 - Dosya: `gta6-pack.json`, 102 girdi (100 protect, 2 translate)
