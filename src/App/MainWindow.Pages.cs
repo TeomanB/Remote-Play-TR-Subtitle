@@ -116,9 +116,21 @@ internal sealed partial class MainWindow
 
         _areasPage = new InspectorPage("Alanlar", "Ana şerit kutuları ve ek yakalama alanları.", (p, w, y) =>
         {
+            int col = (w - Theme.D(8)) / 2, fh = Theme.D(34);
+            y = p.AddLabel(y, w, "Ek alanlar");
+            y += p.AddHint(y, w, "Köşedeki ipuçları için, örneğin sol üstteki “R3’e bas”. Her ek alanın kendi okuma bölgesi ve çeviri kutusu vardır. Ana şerit aşağıda kalır.");
+            int listH = Math.Max(AreaList.RowHeight, _extraList.Height);
+            InspectorPage.Put(_extraList, 0, y, w, listH);
+            y += listH + Theme.D(8);
+            int half = (w - Theme.D(8)) / 2;
+            InspectorPage.Put(_addArea, 0, y, half, Theme.D(34));
+            InspectorPage.Put(_removeArea, half + Theme.D(8), y, w - half - Theme.D(8), Theme.D(34));
+            y += Theme.D(34) + Theme.D(8);
+            InspectorPage.Put(_areaName, 0, y, w, fh);
+            y += fh + Theme.D(8);
+            y += OptionBox(p, y, w, "Bu alanı oku", "Kapalıyken bu bölge okunmaz ve çevirisi gizlenir.", _areaOn) + Theme.D(16);
             InspectorPage.Put(_boxSeg, 0, y, w, Theme.D(34));
             y += Theme.D(34) + Theme.D(18);
-            int col = (w - Theme.D(8)) / 2, fh = Theme.D(34);
             y = p.AddLabel(y, w, "Konum");
             InspectorPage.PutInput(_gx, 0, y, col, fh);
             InspectorPage.PutInput(_gy, col + Theme.D(8), y, w - col - Theme.D(8), fh);
@@ -134,18 +146,6 @@ internal sealed partial class MainWindow
             y += OptionBox(p, y, w, "Bu alanı kilitle", "Kilitliyken taşınmaz ve boyutlanmaz; tıklamalar alttaki kutuya geçer.", _lockToggle) + Theme.D(14);
             string src = _screen.Width.ToString(Inv) + " × " + _screen.Height.ToString(Inv);
             y += p.AddHint(y, w, "Kutular üst üste gelince seçili olan üstte kalır; diğerini seçmek için etiketine ya da yukarıdaki adına tıkla. Sayılar seçili kaynağın " + src + " görüntüsüne göredir.");
-            y = p.AddLabel(y, w, "Ek alanlar");
-            y += p.AddHint(y, w, "Köşedeki ipuçları için, örneğin sol üstteki “R3’e bas”. Her ek alanın kendi okuma bölgesi ve çeviri kutusu vardır. Ana şerit yukarıda kalır.");
-            int listH = Math.Max(AreaList.RowHeight, _extraList.Height);
-            InspectorPage.Put(_extraList, 0, y, w, listH);
-            y += listH + Theme.D(8);
-            int half = (w - Theme.D(8)) / 2;
-            InspectorPage.Put(_addArea, 0, y, half, Theme.D(34));
-            InspectorPage.Put(_removeArea, half + Theme.D(8), y, w - half - Theme.D(8), Theme.D(34));
-            y += Theme.D(34) + Theme.D(8);
-            InspectorPage.Put(_areaName, 0, y, w, fh);
-            y += fh + Theme.D(8);
-            y += OptionBox(p, y, w, "Bu alanı oku", "Kapalıyken bu bölge okunmaz ve çevirisi gizlenir.", _areaOn);
             return y;
         });
         foreach (var c in new Control[] { _boxSeg, _gx, _gy, _gw, _gh, _resetBox, _pickRegion, _lockToggle, _extraList, _addArea, _removeArea, _areaName, _areaOn }) _areasPage.Controls.Add(c);
