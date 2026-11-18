@@ -1158,25 +1158,8 @@ internal sealed partial class MainWindow : Form
         Patch(s =>
         {
             s.TanitimGoruldu = true;
-            s.EkAlanlar = new List<EkAlan>
-            {
-                new()
-                {
-                    Id = "ipucu",
-                    Ad = "İpucu",
-                    Acik = true,
-                    Renk = EkAlan.Palet[0],
-                    RegionX = src.X + src.Width * 3 / 100,
-                    RegionY = src.Y + src.Height * 4 / 100,
-                    RegionWidth = Math.Max(200, src.Width * 26 / 100),
-                    RegionHeight = Math.Max(36, src.Height * 6 / 100),
-                    KonumAyarlandi = true,
-                    KutuX = src.X + src.Width * 3 / 100,
-                    KutuY = src.Y + src.Height * 16 / 100,
-                    KutuGenislik = Math.Max(SubtitleLayout.MinWidth, src.Width * 42 / 100),
-                    KutuYukseklik = Math.Max(84, src.Height * 12 / 100),
-                },
-            };
+            s.EkAlanlar = new List<EkAlan> { EkAlan.VarsayilanIpucu(src.X, src.Y, src.Width, src.Height) };
+            s.IpucuVarsayilanEklendi = true;
         });
         LoadBoxes();
         (float Scale, string Tag)[] frames = { (1f, "100"), (1.5f, "150") };
@@ -1199,7 +1182,27 @@ internal sealed partial class MainWindow : Form
             Refresh();
             SaveShot(dir, $"combo-inspector-{frame.Tag}.png");
             SaveOverlayCard(dir, $"combo-overlays-{frame.Tag}.png", frame.Scale);
+            ShotDrag(dir, frame.Tag, PreviewStage.ExtraOverlay, 140, 70, "ceviri");
+            ShotDrag(dir, frame.Tag, PreviewStage.ExtraCapture, 90, 50, "okuma");
         }
+    }
+
+    /// <summary>Selects an extra box (handles visible), then drags it. The after shot is the proof the rectangle moved.</summary>
+    private void ShotDrag(string dir, string tag, int box, int dx, int dy, string which)
+    {
+        LoadBoxes();
+        _stage.Select(box);
+        SyncSelection();
+        Refresh();
+        SaveShot(dir, $"ipucu-{which}-before-{tag}.png");
+        if (!_stage.BeginDrag(box, -1))
+            throw new InvalidOperationException("İpucu sürüklenemedi: " + box);
+        var before = _stage.Box(box);
+        _stage.ContinueDrag(dx, dy);
+        if (_stage.Box(box) == before)
+            throw new InvalidOperationException("İpucu kutusu yerinden oynamadı: " + box);
+        Refresh();
+        SaveShot(dir, $"ipucu-{which}-after-{tag}.png");
     }
 
     /// <summary>Overlay windows exclude themselves from capture, so the comparison card is drawn directly.</summary>

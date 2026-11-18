@@ -52,6 +52,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         else using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
         _settingsPath = AppPaths.SettingsFile;
         _settings = AppSettings.Load(_settingsPath);
+        var monitor = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+        if (_settings.YerlesikIpucu(monitor.X, monitor.Y, monitor.Width, monitor.Height))
+            SaveSettings();
 
         _overlay = new OverlayForm();
         _goal = new OverlayForm();
@@ -582,6 +585,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.GorevKutuGenislik = e.GorevKutuGenislik;
         _settings.GorevKutuYukseklik = e.GorevKutuYukseklik;
         _settings.EkAlanlar = e.EkAlanlar?.Select(a => a.Copy()).ToList() ?? new List<EkAlan>();
+        _settings.IpucuVarsayilanEklendi = e.IpucuVarsayilanEklendi;
         _settings.AcikPaketler = e.AcikPaketler?.ToList() ?? new List<string>(SozlukKutuphanesi.VarsayilanAcik);
         _settings.BagilX = e.BagilX;
         _settings.BagilY = e.BagilY;

@@ -34,6 +34,32 @@ public class EkAlanTests
     }
 
     [Fact]
+    public void DefaultHintIsAddedOnceAndStaysGoneAfterDelete()
+    {
+        var fresh = new AppSettings();
+        Assert.True(fresh.YerlesikIpucu(0, 0, 1000, 800));
+        Assert.True(fresh.IpucuVarsayilanEklendi);
+        var ipucu = Assert.Single(fresh.EkAlanlar!);
+        Assert.Equal("İpucu", ipucu.Ad);
+        Assert.Equal(1000 * 3 / 100, ipucu.RegionX);
+        Assert.Equal(800 * 4 / 100, ipucu.RegionY);
+        Assert.True(ipucu.Acik);
+        Assert.False(fresh.YerlesikIpucu(0, 0, 1000, 800));
+        fresh.EkAlanlar!.Clear();
+        Assert.False(fresh.YerlesikIpucu(0, 0, 1000, 800));
+        Assert.Empty(fresh.EkAlanlar);
+    }
+
+    [Fact]
+    public void ExistingExtraAreasAreNotReplacedByTheDefault()
+    {
+        var s = new AppSettings { EkAlanlar = new List<EkAlan> { new() { Id = "ozel", Ad = "Özel", RegionWidth = 80, RegionHeight = 40 } } };
+        Assert.True(s.YerlesikIpucu(0, 0, 1000, 800));
+        Assert.Equal("Özel", Assert.Single(s.EkAlanlar!).Ad);
+        Assert.True(s.IpucuVarsayilanEklendi);
+    }
+
+    [Fact]
     public void UnionCoversBothCornersAndSkipsEmpty()
     {
         var u = KareBirlesim.Birles(new EkranDikdortgen[]
