@@ -2,7 +2,7 @@ using AltyaziCevirici.Core;
 
 namespace AltyaziCevirici;
 
-internal sealed class TrayApp : ApplicationContext, ISettingsHost
+internal sealed class TrayApp : ApplicationContext, IAppHost
 {
     private const string AppName = "Altyazı Çevirici";
 
@@ -14,7 +14,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     private readonly OverlayForm _overlay;
     private readonly GoogleTranslator _translator = new();
     private readonly TranslationProcessor _processor;
-    private SettingsForm? _settingsForm;
+    private ControlCenterForm? _center;
+    private readonly ToolStripMenuItem _runItem;
     private readonly System.Windows.Forms.Timer _previewTimer = new() { Interval = 3500 };
     public event EventHandler? StateChanged;
     private readonly TranslationCache _cache = new(4000);
@@ -31,6 +32,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     private volatile bool _paused;
     private volatile bool _resetRequested;
     private bool _selecting;
+    private int _lastLatencyMs;
+    private string _lastText = "";
 
     public TrayApp()
     {
@@ -46,18 +49,20 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); } };
 
         _pauseItem = new ToolStripMenuItem("Duraklat (F9)", null, (_, _) => SafeRun(TogglePause, "pause"));
-        var settingsItem = new ToolStripMenuItem("Ayarlar…", null, (_, _) => SafeRun(OpenSettings, "settings")) { Font = new Font(SystemFonts.MenuFont ?? Control.DefaultFont, FontStyle.Bold) };
+        _runItem = new ToolStripMenuItem("Başlat", null, (_, _) => SafeRun(ToggleRun, "run")) { Font = new Font(SystemFonts.MenuFont ?? Control.DefaultFont, FontStyle.Bold) };
+        var showItem = new ToolStripMenuItem("Göster", null, (_, _) => SafeRun(ShowMain, "show"));
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add(settingsItem);
-        menu.Items.Add(new ToolStripMenuItem("Altyazı bölgesini seç (F8)", null, (_, _) => SafeRun(SelectRegion, "select")));
+        menu.Items.Add(showItem);
+        menu.Items.Add(_runItem);
+        menu.Items.Add(new ToolStripMenuItem("Bölge Seç (F8)", null, (_, _) => SafeRun(SelectRegion, "select")));
         menu.Items.Add(_pauseItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Çıkış (F10)", null, (_, _) => SafeRun(Quit, "quit")));
 
         _icon = IconFactory.Create();
         _tray = new NotifyIcon { Icon = _icon, Text = AppName, ContextMenuStrip = menu, Visible = true };
-        _tray.DoubleClick += (_, _) => SafeRun(OpenSettings, "settings");
+        _tray.DoubleClick += (_, _) => SafeRun(ShowMain, "show");
 
         _hotkeys = new HotkeyWindow();
         var failed = new List<string>();
@@ -75,39 +80,11 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
 
     private void Start()
     {
-        _ocr = OcrCapture.Create(out bool englishMissing, _settings.KaynakDil);
-        if (_ocr == null)
-        {
-            MessageBox.Show(EnglishOcrHelp(noOcrAtAll: true), AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            Quit();
-            return;
-        }
-        if (englishMissing || !_ocr.Matches(_settings.KaynakDil))
-            MessageBox.Show(EnglishOcrHelp(noOcrAtAll: false), AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-        if (!_settings.HasRegion)
-        {
-            Balloon("Altyazının çıktığı alanı seç. F8: bölge seç, F9: duraklat, F10: çıkış. Ayarlar: simgeye çift tıkla.", ToolTipIcon.Info);
-            SelectRegion();
-        }
-        else
-        {
-            Balloon("Çalışıyor. F8: bölge seç, F9: duraklat, F10: çıkış. Ayarlar: simgeye çift tıkla.", ToolTipIcon.Info);
-            StartLoop();
-        }
+        _center = new ControlCenterForm(this);
+        _center.Show();
+        YenidenYukleOcr();
+        StateChanged?.Invoke(this, EventArgs.Empty);
     }
-
-    private static string EnglishOcrHelp(bool noOcrAtAll) =>
-        (noOcrAtAll
-            ? "Windows'ta hiç metin tanıma (OCR) dili bulunamadı, program çalışamıyor.\n\n"
-            : "Windows'ta İngilizce metin tanıma (OCR) paketi yüklü değil. Şimdilik sistem dilinle okunacak ama İngilizce altyazılar hatalı okunabilir.\n\n") +
-        "İngilizce OCR paketini eklemek için:\n" +
-        "1) Ayarlar > Zaman ve dil > Dil ve bölge > Dil ekle\n" +
-        "2) \"English (United States)\" seç. \"Görüntülenen dil olarak ayarla\" işaretini kaldır;\n" +
-        "   \"Temel yazma\" / \"Optik karakter tanıma\" seçili kalsın, Yükle'ye bas.\n" +
-        "3) Kurulum bitince Altyazı Çevirici'yi yeniden aç.\n\n" +
-        "Alternatif (Yönetici PowerShell):\n" +
-        "Add-WindowsCapability -Online -Name \"Language.OCR~~~en-US~0.0.1.0\"";
 
     private Rectangle Region => new(_settings.RegionX, _settings.RegionY, _settings.RegionWidth, _settings.RegionHeight);
 
@@ -132,7 +109,14 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         public Task<TranslateOutcome> TranslateAsync(string text, CancellationToken ct)
         {
             app._lastNetUse = DateTime.UtcNow;
-            return app._processor.TranslateAsync(text, ct);
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            var task = app._processor.TranslateAsync(text, ct);
+            _ = task.ContinueWith(t =>
+            {
+                if (t.Status == TaskStatus.RanToCompletion)
+                    app._lastLatencyMs = (int)started.ElapsedMilliseconds;
+            }, TaskScheduler.Default);
+            return task;
         }
     }
 
@@ -213,7 +197,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
             _lastAppliedSeq = u.Seq;
             if (_previewing) { _previewing = false; _previewTimer.Stop(); }
             if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); return; }
-            _overlay.ShowText(u.Shown ?? string.Empty, u.IsFallback);
+            _lastText = u.Shown ?? string.Empty;
+            _overlay.ShowText(_lastText, u.IsFallback);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "overlay"); }
     }
@@ -257,6 +242,10 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         try
         {
             using var f = new RegionSelectorForm();
+            bool wasVisible = _center is { Visible: true };
+            _center?.Hide();
+            try
+            {
             if (f.ShowDialog() == DialogResult.OK)
             {
                 var r = f.SelectedRegion;
@@ -266,16 +255,17 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
                 _settings.RegionHeight = r.Height;
                 SaveSettings();
                 StateChanged?.Invoke(this, EventArgs.Empty);
-                Balloon("Bölge kaydedildi. Çeviri başladı.", ToolTipIcon.Info);
-                StartLoop();
+                Balloon("Bölge kaydedildi. Çeviri için Başlat'a bas.", ToolTipIcon.Info);
+                if (wasRunning) StartLoop();
             }
-            else if (wasRunning || _settings.HasRegion)
+            else if (wasRunning)
             {
                 StartLoop();
             }
-            else
+            }
+            finally
             {
-                Balloon("Bölge seçilmedi. F8 ile ya da simgeye çift tıklayarak seçebilirsin.", ToolTipIcon.Info);
+                if (wasVisible) ShowMain();
             }
         }
         finally { _selecting = false; }
@@ -302,18 +292,73 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     public AppSettings Current => _settings;
     public bool IsPaused => _paused;
 
-    private void OpenSettings()
+    public void ShowMain()
     {
-        if (_settingsForm is { IsDisposed: false })
+        if (_center == null || _center.IsDisposed) _center = new ControlCenterForm(this);
+        if (!_center.Visible) _center.Show();
+        if (_center.WindowState == FormWindowState.Minimized) _center.WindowState = FormWindowState.Normal;
+        _center.Activate();
+    }
+
+    public void NotifyMinimizedToTray()
+    {
+        if (_settings.TepsiIpucuGosterildi) return;
+        _settings.TepsiIpucuGosterildi = true;
+        SaveSettings();
+        Balloon("Pencere tepsiye küçültüldü. Geri açmak için simgeye çift tıkla ya da menüden Göster'i seç.", ToolTipIcon.Info);
+    }
+
+    public void SkipRelease(string tag)
+    {
+        _settings.AtlananSurum = tag;
+        SaveSettings();
+    }
+
+    private void ToggleRun()
+    {
+        if (IsRunning) StopCapture();
+        else StartCapture();
+    }
+
+    public void StartCapture()
+    {
+        if (!_settings.HasRegion)
         {
-            _settingsForm.WindowState = FormWindowState.Normal;
-            _settingsForm.Activate();
+            Balloon("Önce Bölge Seç ile altyazı şeridini işaretle.", ToolTipIcon.Info);
+            StateChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
-        _settingsForm = new SettingsForm(this);
-        _settingsForm.FormClosed += (_, _) => { _settingsForm?.Dispose(); _settingsForm = null; };
-        _settingsForm.Show();
-        _settingsForm.Activate();
+        if (_ocr == null)
+        {
+            Balloon("Windows metin tanıma (OCR) kullanılamıyor.", ToolTipIcon.Warning);
+            return;
+        }
+        _paused = false;
+        _pauseItem.Text = "Duraklat (F9)";
+        StartLoop();
+        _runItem.Text = "Durdur";
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void StopCapture()
+    {
+        StopLoop();
+        _overlay.HideText();
+        _runItem.Text = "Başlat";
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void BeginPlacementEdit()
+    {
+        bool wasRunning = IsRunning;
+        if (wasRunning) StopLoop();
+        _overlay.HideText();
+        var copy = _settings.Clone();
+        using var editor = new PlacementEditorForm(copy, Region, "Örnek çeviri: Siktir, Port Gellhorn'a geç kaldık!");
+        if (editor.ShowDialog(_center) == DialogResult.OK)
+            Apply(copy, persist: true);
+        if (wasRunning) StartLoop();
+        else ShowPreview();
     }
 
     public void Apply(AppSettings e, bool persist)
@@ -330,6 +375,18 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _settings.ArkaPlanOpakligi = e.ArkaPlanOpakligi;
         _settings.OverlayKonumu = e.OverlayKonumu;
         _settings.DikeyKaydirma = e.DikeyKaydirma;
+        _settings.DisCizgi = e.DisCizgi;
+        _settings.KonumAyarlandi = e.KonumAyarlandi;
+        _settings.BolgeyiTakipEt = e.BolgeyiTakipEt;
+        _settings.OnAyar = e.OnAyar;
+        _settings.KutuX = e.KutuX;
+        _settings.KutuY = e.KutuY;
+        _settings.KutuGenislik = e.KutuGenislik;
+        _settings.BagilX = e.BagilX;
+        _settings.BagilY = e.BagilY;
+        _settings.MonitorAdi = e.MonitorAdi;
+        _settings.AcilistaGuncellemeDenetle = e.AcilistaGuncellemeDenetle;
+        if (!string.IsNullOrEmpty(e.AtlananSurum)) _settings.AtlananSurum = e.AtlananSurum;
         _settings.Sozluk = e.Sozluk?.Select(g => new SozlukGirdisi(g.Ingilizce, g.Turkce)).ToList() ?? new List<SozlukGirdisi>();
         _settings.Clamp();
 
@@ -349,19 +406,32 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         }
 
         // Subtitle language: the OCR engine must change too.
-        if (!string.Equals(oldSource, _settings.KaynakDil, StringComparison.OrdinalIgnoreCase) && _ocr != null)
+        if (!string.Equals(oldSource, _settings.KaynakDil, StringComparison.OrdinalIgnoreCase))
         {
             bool wasRunning = _loopTask != null;
             StopLoop();
-            var old = _ocr;
-            var fresh = OcrCapture.Create(out _, _settings.KaynakDil);
-            if (fresh != null) { _ocr = fresh; old.Dispose(); }
-            if (!_ocr.Matches(_settings.KaynakDil))
-                Balloon("Bu dil için Windows metin tanıma (OCR) paketi yüklü değil; mevcut dille okunacak.", ToolTipIcon.Warning);
-            if (wasRunning || _settings.HasRegion) StartLoop();
+            YenidenYukleOcr();
+            if (wasRunning && !OcrPaketiEksik) StartLoop();
         }
 
         if (persist) SaveSettings();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public bool OcrPaketiEksik { get; private set; }
+
+    public bool YenidenYukleOcr()
+    {
+        bool missing = !OcrPaketKur.KaynakHazir(_settings.KaynakDil);
+        var fresh = OcrCapture.Create(out _, _settings.KaynakDil);
+        if (fresh != null)
+        {
+            var old = _ocr;
+            _ocr = fresh;
+            old?.Dispose();
+        }
+        OcrPaketiEksik = missing || _ocr == null || !_ocr.Matches(_settings.KaynakDil);
+        return !OcrPaketiEksik;
     }
 
     public void ShowPreview()
@@ -374,8 +444,14 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _previewTimer.Start();
     }
 
-    void ISettingsHost.SelectRegion() => SafeRun(SelectRegion, "select");
-    void ISettingsHost.TogglePause() => SafeRun(TogglePause, "pause");
+    public bool IsRunning => _loopTask != null;
+    public string SonMetin => _lastText;
+    public int SonGecikmeMs => _lastLatencyMs;
+    public string OcrDurum => _ocr == null ? "OCR yok" : !IsRunning ? "Durdu" : _paused ? "Duraklatıldı" : "Çalışıyor";
+    public bool KurulumKopyasi => GuncellemeIstegi.KurulumKopyasi;
+
+    void IAppHost.SelectRegion() => SafeRun(SelectRegion, "select");
+    void IAppHost.TogglePause() => SafeRun(TogglePause, "pause");
 
     private void Balloon(string text, ToolTipIcon icon)
     {
@@ -384,13 +460,13 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
 
     private bool _quitting;
 
-    private void Quit()
+    public void Quit()
     {
         if (_quitting) return;
         _quitting = true;
         try { _warmTimer.Dispose(); } catch (Exception) { }
         try { _previewTimer.Dispose(); } catch (Exception) { }
-        try { if (_settingsForm is { IsDisposed: false }) _settingsForm.Close(); } catch (Exception) { }
+        try { if (_center is { IsDisposed: false }) { _center.AllowExit(); _center.Close(); } } catch (Exception) { }
         StopLoop();
         _pipeline?.Dispose();
         _hotkeys?.Dispose();

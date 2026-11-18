@@ -1,4 +1,4 @@
-﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.2 - ayarlar penceresi, küfür ve isim düzeltmesi)
+﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.3 - kontrol merkezi)
 ===========================
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
@@ -8,8 +8,8 @@ KURULUM
 - Kurulum (AltyaziCevirici-Setup-....exe): yönetici istemez, yalnızca senin hesabına kurulur.
   Varsayılan klasör %LocalAppData%\Programs\AltyaziCevirici. Başlat menüsüne kısayol ekler,
   istersen masaüstü kısayolu da koyar, Windows'tan kaldırılır.
-  Sihirbaz İngilizce OCR paketini yüklemeyi önerebilir. Kutuyu işaretlemezsen, ya da açılan
-  yönetici penceresinde Hayır dersen, kurulum yine tamamlanır.
+  Sihirbaz İngilizce yazı tanıma paketini isteğe bağlı sorar. Kutuyu işaretlemezsen yönetici
+  izni istenmez ve kurulum yine tamamlanır. Paketi sonradan programın içinden Kur ile de eklersin.
 - Taşınabilir sürüm: AltyaziCevirici.exe'yi istediğin bir klasöre koy (ör. Masaüstü\AltyaziCevirici).
   Ayrı bir kurulum gerekmez.
 - Ayarlar "ayarlar.json" dosyasına kaydedilir. Programın klasörü yazılabiliyorsa dosya exe'nin
@@ -21,19 +21,21 @@ KURULUM
 - İnternet bağlantısı gerekir (çeviri Google Çeviri ile yapılır).
 
 İLK ÇALIŞTIRMA
-1) PS Remote Play'i aç, oyunu başlat. Remote Play penceresini istediğin boyuta getir
-   (tam ekran ya da pencere). Pencerenin yerini/boyutunu sonra değiştirirsen bölgeyi yeniden seç.
-2) AltyaziCevirici.exe'yi çalıştır. Ekran donuk görünür: altyazının çıktığı alt şeridi
-   fareyle sürükleyerek seç (iki satırlık altyazıya yetecek kadar geniş ve yüksek seç).
-3) Türkçe çeviri, seçtiğin alanın üstünde koyu bir kutuda görünür. Altyazı kaybolunca
-   2 saniye sonra kutu da kaybolur.
+1) PS Remote Play'i aç, oyunu başlat. Remote Play penceresini istediğin boyuta getir.
+   Pencerenin yerini sonra değiştirirsen bölgeyi yeniden seç.
+2) AltyaziCevirici.exe'yi çalıştır. Kontrol merkezi açılır; ekran kendiliğinden kararmaz.
+   "Bölge Seç"e bas, altyazının çıktığı şeridi sürükleyerek işaretle.
+   Daha önce seçtiğin bölge durur ve önizlemede görünür.
+3) "Başlat"a bas. Türkçe çeviri ekranda görünür. "Durdur" okumayı keser.
+   Pencereyi kapatmak programı kapatmaz; saat yanındaki simgeye küçültür.
+   Simgeye çift tıkla ya da menüden "Göster" de.
 
 KISAYOL TUŞLARI
-- F8  : Altyazı bölgesini yeniden seç
+- F8  : Altyazı bölgesini seç
 - F9  : Duraklat / devam et
 - F10 : Çıkış
-- Saatin yanındaki kırmızı "TR" simgesine ÇİFT TIKLA: Ayarlar penceresi açılır.
-- Simgeye SAĞ TIKLA: Ayarlar, bölge seç, duraklat, çıkış.
+- Simgeye ÇİFT TIKLA: Kontrol merkezini göster
+- Simgeye SAĞ TIKLA: Göster, başlat/durdur, bölge, duraklat, çıkış
 
 YENİ: AYARLAR PENCERESİ (1.2)
 Değişiklikler anında uygulanır. "Kaydet" ya da pencereyi kapatmak kaydeder, "Vazgeç" eski haline döndürür.
@@ -61,12 +63,12 @@ KÜFÜRLER VE İSİMLER (1.2)
   o zaman Sözlük'ü kullan.
 - Bu düzeltmeler İngilizce → Türkçe içindir; başka dil çiftlerinde sadece Sözlük uygulanır.
 
-İNGİLİZCE METİN TANIMA (OCR) PAKETİ
-Program Windows'un kendi metin tanıma özelliğini kullanır. İngilizce paketi yoksa açılışta uyarı çıkar.
-Eklemek için: Ayarlar > Zaman ve dil > Dil ve bölge > Dil ekle > "English (United States)".
-"Görüntülenen dil olarak ayarla" işaretini kaldırabilirsin; "Optik karakter tanıma" / "Temel yazma"
-seçili kalsın. Kurulumdan sonra programı yeniden aç.
-(Alternatif, Yönetici PowerShell:  Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0")
+YAZI TANIMA PAKETİ
+Program Windows'un kendi metin tanımasını kullanır. Seçtiğin dilin paketi yoksa kontrol merkezinde
+"İngilizce yazı tanıma paketi eksik — Kur" şeridi çıkar. Kur'a bas; Windows yönetici izni ister.
+İzni vermezsen program kapanmaz. Paket hemen tanınırsa yeniden başlatmana gerek kalmaz.
+Tanıma açılmazsa programı bir kez kapatıp yeniden aç. Kaynak panelindeki
+"Yazı tanıma paketini kur" düğmesi aynı işi yapar.
 
 İPUÇLARI
 - Oyun içinden altyazıyı açık, mümkünse büyük boy ve arka planlı seç; okuma çok daha iyi olur.
