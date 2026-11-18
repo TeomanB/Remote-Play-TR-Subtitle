@@ -89,6 +89,13 @@ public sealed class AppSettings
     /// <summary>Games whose misses must not call Google. A match still uses the pack.</summary>
     public List<string>? SadeceHazirPaket { get; set; }
 
+    // ---- v1.5.2 second overlay for HUD / objective lines. The capture region stays singular. ----
+    public bool GorevKonumAyarlandi { get; set; }
+    public int GorevKutuX { get; set; }
+    public int GorevKutuY { get; set; }
+    public int GorevKutuGenislik { get; set; }
+    public int GorevKutuYukseklik { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
@@ -149,6 +156,10 @@ public sealed class AppSettings
         DisCizgi = Math.Clamp(DisCizgi, 0, 16);
         KutuGenislik = KutuGenislik < SubtitleLayout.MinWidth ? 0 : Math.Clamp(KutuGenislik, SubtitleLayout.MinWidth, 8000);
         KutuYukseklik = KutuYukseklik <= 0 ? 0 : Math.Clamp(KutuYukseklik, 24, 800);
+        GorevKutuGenislik = GorevKutuGenislik <= 0 ? 0 : Math.Clamp(GorevKutuGenislik, 0, 8000);
+        GorevKutuYukseklik = GorevKutuYukseklik <= 0 ? 0 : Math.Clamp(GorevKutuYukseklik, 0, 800);
+        GorevKutuX = Math.Clamp(GorevKutuX, -8000, 16000);
+        GorevKutuY = Math.Clamp(GorevKutuY, -8000, 16000);
         KutuX = Math.Clamp(KutuX, -8000, 16000);
         KutuY = Math.Clamp(KutuY, -8000, 16000);
         BagilX = Math.Clamp(BagilX, -8000, 8000);

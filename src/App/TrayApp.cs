@@ -12,6 +12,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private readonly ToolStripMenuItem _pauseItem;
     private readonly HotkeyWindow _hotkeys;
     private readonly OverlayForm _overlay;
+    private readonly OverlayForm _goal;
     private readonly GoogleTranslator _translator = new();
     private readonly TranslationProcessor _processor;
     private HazirKutuphane _hazir = HazirKutuphane.Bos;
@@ -45,12 +46,15 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings = AppSettings.Load(_settingsPath);
 
         _overlay = new OverlayForm();
+        _goal = new OverlayForm();
         _ = _overlay.Handle; // create handle on UI thread
+        _ = _goal.Handle;
 
         _hazir = HazirKutuphane.Yukle();
         _processor = new TranslationProcessor(_translator, _settings.ToProcessorOptions(_hazir));
         _overlay.Configure(Region, _settings);
-        _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); } };
+        ConfigureGoal();
+        _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); _goal.HideText(); } };
 
         _pauseItem = new ToolStripMenuItem("Duraklat (F9)", null, (_, _) => SafeRun(TogglePause, "pause"));
         _runItem = new ToolStripMenuItem("Başlat", null, (_, _) => SafeRun(ToggleRun, "run"));
@@ -205,9 +209,13 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             if (state is not DisplayUpdate u || u.Seq <= _lastAppliedSeq) return; // never apply stale updates
             _lastAppliedSeq = u.Seq;
             if (_previewing) { _previewing = false; _previewTimer.Stop(); }
-            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); return; }
+            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); _goal.HideText(); return; }
+            bool objective = string.Equals(u.LineKind, "objective", StringComparison.OrdinalIgnoreCase);
+            var box = objective ? _goal : _overlay;
+            if (objective) ConfigureGoal();
+            else _overlay.Configure(Region, _settings);
             _lastText = u.Shown ?? string.Empty;
-            _overlay.ShowText(_lastText, u.IsFallback);
+            box.ShowText(_lastText, u.IsFallback);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "overlay"); }
     }
@@ -417,6 +425,11 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.KutuY = e.KutuY;
         _settings.KutuGenislik = e.KutuGenislik;
         _settings.KutuYukseklik = e.KutuYukseklik;
+        _settings.GorevKonumAyarlandi = e.GorevKonumAyarlandi;
+        _settings.GorevKutuX = e.GorevKutuX;
+        _settings.GorevKutuY = e.GorevKutuY;
+        _settings.GorevKutuGenislik = e.GorevKutuGenislik;
+        _settings.GorevKutuYukseklik = e.GorevKutuYukseklik;
         _settings.AcikPaketler = e.AcikPaketler?.ToList() ?? new List<string>(SozlukKutuphanesi.VarsayilanAcik);
         _settings.BagilX = e.BagilX;
         _settings.BagilY = e.BagilY;
@@ -431,6 +444,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         bool fb = _overlay.CurrentIsFallback;
         _overlay.Configure(Region, _settings);
         _overlay.Refresh(text, fb);
+        ConfigureGoal();
 
         // Translation rules: new options, drop cached translations, re-translate the current line.
         _hazir = HazirKutuphane.Yukle();
@@ -475,12 +489,28 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         return !OcrPaketiEksik;
     }
 
+    private void ConfigureGoal()
+    {
+        var look = _settings.Clone();
+        look.KonumAyarlandi = _settings.GorevKonumAyarlandi || _settings.GorevKutuGenislik >= SubtitleLayout.MinWidth;
+        look.KutuX = _settings.GorevKutuX;
+        look.KutuY = _settings.GorevKutuY;
+        look.KutuGenislik = _settings.GorevKutuGenislik > 0 ? _settings.GorevKutuGenislik : Math.Max(SubtitleLayout.MinWidth, _settings.KutuGenislik > 0 ? _settings.KutuGenislik - 80 : 420);
+        look.KutuYukseklik = _settings.GorevKutuYukseklik > 0 ? _settings.GorevKutuYukseklik : 48;
+        look.DisCizgiRengi = "#7A4FBF";
+        look.YaziRengi = "#EDE4FF";
+        if (look.DisCizgi < 2) look.DisCizgi = 3;
+        _goal.Configure(Region, look);
+    }
+
     public void ShowPreview()
     {
         if (!_settings.HasRegion) { Balloon("Önce altyazı bölgesini seç (F8).", ToolTipIcon.Info); return; }
         _previewing = true;
         _overlay.Configure(Region, _settings);
         _overlay.ShowText(MainWindow.OrnekAltyazi, false);
+        ConfigureGoal();
+        _goal.ShowText("Phoenix'i yeniden boya.", false);
         _previewTimer.Stop();
         _previewTimer.Start();
     }
@@ -519,6 +549,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _hotkeys?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         _overlay?.Close();
+        _goal?.Close();
         _ocr?.Dispose();
         _translator.Dispose();
         ExitThread();

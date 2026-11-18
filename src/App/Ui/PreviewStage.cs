@@ -10,11 +10,11 @@ namespace AltyaziCevirici.Ui;
 /// </summary>
 internal sealed class PreviewStage : Control
 {
-    public const int Orig = 0, Trans = 1;
-    private static readonly string[] Names = { "Orijinal altyazı", "Çeviri" };
+    public const int Orig = 0, Trans = 1, Goal = 2;
+    private static readonly string[] Names = { "Orijinal altyazı", "Çeviri", "Görev" };
 
-    private readonly Rectangle[] _box = new Rectangle[2];
-    private readonly bool[] _locked = new bool[2];
+    private readonly Rectangle[] _box = new Rectangle[3];
+    private readonly bool[] _locked = new bool[3];
     private Bitmap? _frame;
     private Rectangle _source = new(0, 0, 1920, 1080);
     private int _selected = Trans;
@@ -99,8 +99,8 @@ internal sealed class PreviewStage : Control
         Invalidate();
     }
 
-    public static int MinWidth(int i) => i == Trans ? SubtitleLayout.MinWidth : 40;
-    public static int MinHeight(int i) => i == Trans ? 24 : 16;
+    public static int MinWidth(int i) => i == Orig ? 40 : SubtitleLayout.MinWidth;
+    public static int MinHeight(int i) => i == Orig ? 16 : 24;
 
     // ---------------- mapping ----------------
 
@@ -148,11 +148,17 @@ internal sealed class PreviewStage : Control
     /// <summary>Hit test, top box first. Part: -3 tag, -1 body, 0..7 handles.</summary>
     private (int Box, int Part) Hit(Point p)
     {
-        int[] order = { _selected, 1 - _selected };
-        foreach (int i in order)
-            if (!_box[i].IsEmpty && TagRect(i).Contains(p)) return (i, -3);
+        int[] order = { _selected, Orig, Trans, Goal };
+        var seen = new HashSet<int>();
         foreach (int i in order)
         {
+            if (!seen.Add(i) || i < 0 || i >= _box.Length) continue;
+            if (!_box[i].IsEmpty && TagRect(i).Contains(p)) return (i, -3);
+        }
+        seen.Clear();
+        foreach (int i in order)
+        {
+            if (!seen.Add(i) || i < 0 || i >= _box.Length) continue;
             if (_box[i].IsEmpty || _locked[i]) continue;
             var b = ToClient(_box[i]);
             if (i == _selected)
@@ -312,11 +318,9 @@ internal sealed class PreviewStage : Control
         }
         else Placeholder.Draw(g, m);
 
-        int first = 1 - _selected;
-        DrawBox(g, first);
+        for (int i = 0; i < _box.Length; i++) if (i != _selected) DrawBox(g, i);
         DrawBox(g, _selected);
-        // Tags last: the box underneath stays reachable by its label even when the other box covers it.
-        DrawTag(g, first);
+        for (int i = 0; i < _box.Length; i++) if (i != _selected) DrawTag(g, i);
         DrawTag(g, _selected);
         g.Restore(state);
     }
@@ -325,7 +329,7 @@ internal sealed class PreviewStage : Control
     {
         if (_box[i].IsEmpty) return;
         bool sel = i == _selected, locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        var color = i == Goal ? Theme.Hex(0x7A4FBF) : i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
         float fade = !sel && locked ? 0.75f : 1f;
         var tag = TagRect(i);
         var tagFill = sel ? color : Theme.Mix(color, Theme.Stage, 0.3f);
@@ -345,11 +349,12 @@ internal sealed class PreviewStage : Control
         var b = ToClient(_box[i]);
         bool sel = i == _selected;
         bool locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        var color = i == Goal ? Theme.Hex(0x7A4FBF) : i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
         float fade = !sel && locked ? 0.75f : 1f;
         var line = Theme.Alpha(color, (int)(255 * fade));
 
-        if (i == Trans) DrawSample(g, b);
+        if (i == Trans) DrawSample(g, b, _sample, null, null);
+        else if (i == Goal) DrawSample(g, b, "Phoenix'i yeniden boya.", "#EDE4FF", "#7A4FBF");
 
         float radius = Theme.D(7);
         if (sel)
@@ -379,12 +384,12 @@ internal sealed class PreviewStage : Control
     }
 
     /// <summary>Sample Turkish line with the overlay's font, color, outline, and background opacity, scaled to the preview.</summary>
-    private void DrawSample(Graphics g, RectangleF b)
+    private void DrawSample(Graphics g, RectangleF b, string? text, string? textColor, string? outlineColor)
     {
         float k = Zoom;
         int alpha = (int)Math.Round(Math.Clamp(_look.ArkaPlanOpakligi, 0, 100) * 2.55);
         if (alpha > 0) Theme.FillRound(g, b, Theme.D(6), Color.FromArgb(alpha, 10, 10, 14));
-        if (string.IsNullOrWhiteSpace(_sample)) return;
+        if (string.IsNullOrWhiteSpace(text)) return;
 
         string family = SubtitleFonts.Resolve(_look.YaziTipi);
         float em = Math.Max(4f, _look.YaziBoyutu * k);
@@ -392,22 +397,22 @@ internal sealed class PreviewStage : Control
         using var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near };
         float padX = 18 * k;
         var layout = new RectangleF(b.X + padX, b.Y, Math.Max(10, b.Width - 2 * padX), b.Height);
-        var size = g.MeasureString(_sample, font, (int)layout.Width, fmt);
+        var size = g.MeasureString(text, font, (int)layout.Width, fmt);
         layout.Y = b.Y + Math.Max(0, (b.Height - size.Height) / 2f);
         layout.Height = Math.Max(size.Height + 2, b.Height);
 
         var state = g.Save();
         g.SetClip(RectangleF.Inflate(b, 2, 2), CombineMode.Intersect);
         using var path = new GraphicsPath();
-        path.AddString(_sample, font.FontFamily, (int)FontStyle.Bold, em, layout, fmt);
+        path.AddString(text, font.FontFamily, (int)FontStyle.Bold, em, layout, fmt);
         float outline = Math.Clamp(_look.DisCizgi, 0, 16) * k;
         if (outline > 0.2f)
         {
-            var oc = AppSettings.TryParseColor(_look.DisCizgiRengi, out var c2) ? Color.FromArgb(255, c2.R, c2.G, c2.B) : Color.Black;
+            var oc = AppSettings.TryParseColor(outlineColor ?? _look.DisCizgiRengi, out var c2) ? Color.FromArgb(255, c2.R, c2.G, c2.B) : Color.Black;
             using var pen = new Pen(oc, outline) { LineJoin = LineJoin.Round };
             g.DrawPath(pen, path);
         }
-        var fc = AppSettings.TryParseColor(_look.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
+        var fc = AppSettings.TryParseColor(textColor ?? _look.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
         using (var fill = new SolidBrush(fc)) g.FillPath(fill, path);
         g.Restore(state);
     }

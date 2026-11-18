@@ -5,6 +5,7 @@ public sealed class TranslationCache
 {
     private readonly int _capacity;
     private readonly Dictionary<string, LinkedListNode<(string Key, string Value)>> _map = new();
+    private readonly Dictionary<string, string> _kind = new(StringComparer.Ordinal);
     private readonly LinkedList<(string Key, string Value)> _lru = new();
     private readonly object _lock = new();
 
@@ -15,10 +16,12 @@ public sealed class TranslationCache
     /// <summary>Drops everything (glossary or language changed).</summary>
     public void Clear()
     {
-        lock (_lock) { _map.Clear(); _lru.Clear(); }
+        lock (_lock) { _map.Clear(); _kind.Clear(); _lru.Clear(); }
     }
 
-    public bool TryGet(string text, out string value)
+    public bool TryGet(string text, out string value) => TryGet(text, out value, out _);
+
+    public bool TryGet(string text, out string value, out string? kind)
     {
         var key = TextUtil.Key(text);
         lock (_lock)
@@ -28,14 +31,18 @@ public sealed class TranslationCache
                 _lru.Remove(node);
                 _lru.AddFirst(node);
                 value = node.Value.Value;
+                kind = _kind.GetValueOrDefault(key);
                 return true;
             }
         }
         value = string.Empty;
+        kind = null;
         return false;
     }
 
-    public void Set(string text, string translation)
+    public void Set(string text, string translation) => Set(text, translation, null);
+
+    public void Set(string text, string translation, string? kind)
     {
         var key = TextUtil.Key(text);
         if (key.Length == 0) return;
@@ -48,11 +55,14 @@ public sealed class TranslationCache
             }
             var node = _lru.AddFirst((key, translation));
             _map[key] = node;
+            if (string.IsNullOrEmpty(kind)) _kind.Remove(key);
+            else _kind[key] = kind;
             while (_map.Count > _capacity)
             {
                 var last = _lru.Last!;
                 _lru.RemoveLast();
                 _map.Remove(last.Value.Key);
+                _kind.Remove(last.Value.Key);
             }
         }
     }

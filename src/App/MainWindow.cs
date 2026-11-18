@@ -104,6 +104,17 @@ internal sealed partial class MainWindow : Form
             Grab();
             RefreshAll();
             if (_host.Current.AcilistaGuncellemeDenetle) _ = CheckUpdatesAsync(false);
+            var goal = Environment.GetEnvironmentVariable("GOAL_SHOTS");
+            if (!string.IsNullOrEmpty(goal))
+            {
+                try { CaptureGoal(goal); Environment.Exit(0); }
+                catch (Exception ex)
+                {
+                    try { File.WriteAllText(Path.Combine(goal, "error.txt"), ex.ToString()); } catch (Exception) { }
+                    Environment.Exit(1);
+                }
+                return;
+            }
             var sozluk = Environment.GetEnvironmentVariable("SOZLUK_SHOTS");
             if (!string.IsNullOrEmpty(sozluk))
             {
@@ -769,8 +780,12 @@ internal sealed partial class MainWindow : Form
             int w = Math.Max(SubtitleLayout.MinWidth, src.Width * 64 / 100);
             trans = new Rectangle(src.X + (src.Width - w) / 2, src.Y + src.Height * 635 / 1000, w, Math.Max(PreviewStage.MinHeight(1), src.Height * 105 / 1000));
         }
+        Rectangle goal = s.GorevKutuGenislik >= SubtitleLayout.MinWidth
+            ? new Rectangle(s.GorevKutuX, s.GorevKutuY, s.GorevKutuGenislik, Math.Max(24, s.GorevKutuYukseklik))
+            : new Rectangle(src.X + src.Width * 58 / 100, src.Y + src.Height * 8 / 100, Math.Max(SubtitleLayout.MinWidth, src.Width * 28 / 100), Math.Max(36, src.Height * 7 / 100));
         _stage.SetBox(PreviewStage.Orig, orig);
         _stage.SetBox(PreviewStage.Trans, trans);
+        _stage.SetBox(PreviewStage.Goal, goal);
         _savedRegion = s.HasRegion ? orig : Rectangle.Empty;
         RefreshGeometryFields();
     }
@@ -815,6 +830,15 @@ internal sealed partial class MainWindow : Form
             SubtitleLayout.Remember(s, new EkranDikdortgen(cap.X, cap.Y, cap.Width, cap.Height), new EkranDikdortgen(ocr.X, ocr.Y, ocr.Width, ocr.Height), follow: false);
             s.KutuYukseklik = cap.Height;
         }
+        var goal = _stage.Box(PreviewStage.Goal);
+        if (goal.Width >= SubtitleLayout.MinWidth)
+        {
+            s.GorevKonumAyarlandi = true;
+            s.GorevKutuX = goal.X;
+            s.GorevKutuY = goal.Y;
+            s.GorevKutuGenislik = goal.Width;
+            s.GorevKutuYukseklik = goal.Height;
+        }
         _savedRegion = ocr;
         _host.Apply(s, true);
         if (showOverlay && s.HasRegion && !_host.IsRunning) _host.ShowPreview();
@@ -833,7 +857,7 @@ internal sealed partial class MainWindow : Form
         _stage.SetLocked(i, locked);
         SyncSelection();
         if (i == PreviewStage.Orig) Patch(s => s.OrijinalKilitli = locked);
-        else Patch(s => s.CeviriKilitli = locked);
+        else if (i == PreviewStage.Trans) Patch(s => s.CeviriKilitli = locked);
     }
 
     private void SyncSelection()
@@ -942,7 +966,7 @@ internal sealed partial class MainWindow : Form
             new(OnForm(_stage, _stage.BoxClient(PreviewStage.Orig)), "Orijinal altyazı", "Bu kutu oyunun İngilizce altyazısının okunduğu alandır. Sürükleyerek taşı, tutamaçlardan boyutlandır.", 0),
             new(OnForm(_stage, _stage.BoxClient(PreviewStage.Trans)), "Çeviri kutusu", "Türkçe yazı bu kutunun yerinde çıkar. Onu da sürükleyip boyutlandırabilirsin.", 0),
             new(_sourceCard.Bounds, "Kaynak ve monitör", "Kaynak hangi pencereyi, Monitör hangi ekranı okuyacağını seçer.", 0),
-            new(_inspector.Bounds, "Alanlar", "Seçili kutunun konumu ve boyutu sayı olarak burada durur. İstersen buradan da yazarsın.", 0),
+            new(_inspector.Bounds, "Alanlar", "Konuşma kutusu ve mor görev kutusu ayrı durur. Konum ve boyutu buradan da yazabilirsin.", 0),
             new(_statusCard.Bounds, "Başlat ve durum", "Başlat okumayı açar. Alttaki yazı hazır mı, çalışıyor mu onu söyler.", 0),
             new(_lastCard.Bounds, "Son çeviri", "En son okunan satır ve Türkçesi bu kartta görünür.", 0),
             new(_inspector.Bounds, "Görünüm", "Yazı boyutu, renk ve arka plan burada. Örnek cümle önizlemede hemen değişir.", 1),
@@ -951,6 +975,65 @@ internal sealed partial class MainWindow : Form
         };
         ShowNav(0);
         return list.ToArray();
+    }
+
+    private void CaptureGoal(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        _tour.Visible = false;
+        Patch(s => s.TanitimGoruldu = true);
+        (float Scale, string Tag)[] frames = { (1f, "100"), (1.5f, "150") };
+        foreach (var frame in frames)
+        {
+            Theme.SetScale(frame.Scale);
+            var min = new Size(Theme.D(1060), Theme.D(680));
+            MinimumSize = min;
+            var work = Screen.FromHandle(Handle).WorkingArea;
+            Size = new Size(Math.Min(min.Width, work.Width), Math.Min(min.Height, work.Height));
+            WindowState = FormWindowState.Normal;
+            Arrange();
+            ShowNav(0);
+            _stage.Select(PreviewStage.Goal);
+            SyncSelection();
+            Refresh();
+            SaveShot(dir, $"goal-preview-{frame.Tag}.png");
+            ShowNav(1);
+            Arrange();
+            Refresh();
+            SaveShot(dir, $"goal-inspector-{frame.Tag}.png");
+            SaveOverlayCard(dir, $"goal-overlays-{frame.Tag}.png", frame.Scale);
+        }
+    }
+
+    /// <summary>Overlay windows exclude themselves from capture, so the comparison card is drawn directly.</summary>
+    private static void SaveOverlayCard(string dir, string name, float scale)
+    {
+        int w = (int)(1280 * scale);
+        int h = (int)(720 * scale);
+        using var bmp = new Bitmap(w, h);
+        using var g = Graphics.FromImage(bmp);
+        g.Clear(Color.FromArgb(18, 16, 28));
+        using var sky = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, (int)(280 * scale), w, (int)(440 * scale)), Color.FromArgb(40, 28, 70), Color.FromArgb(90, 50, 40), 90f);
+        g.FillRectangle(sky, 0, (int)(280 * scale), w, (int)(440 * scale));
+        DrawCardBox(g, Scaled(160, 520, 720, 88, scale), "Polisler gelmeden buradan çıkmamız lazım.", Color.FromArgb(20, 184, 178), Color.White, scale);
+        DrawCardBox(g, Scaled(760, 70, 420, 64, scale), "Phoenix'i yeniden boya.", Color.FromArgb(122, 79, 191), Color.FromArgb(237, 228, 255), scale);
+        bmp.Save(Path.Combine(dir, name), System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    private static Rectangle Scaled(int x, int y, int w, int h, float scale)
+        => new((int)(x * scale), (int)(y * scale), (int)(w * scale), (int)(h * scale));
+
+    private static void DrawCardBox(Graphics g, Rectangle r, string text, Color accent, Color fill, float scale)
+    {
+        using var bg = new SolidBrush(Color.FromArgb(210, 8, 8, 12));
+        g.FillRectangle(bg, r);
+        using var pen = new Pen(accent, Math.Max(2f, 4 * scale));
+        g.DrawRectangle(pen, r);
+        using var font = new Font("Segoe UI", 22 * scale, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var brush = new SolidBrush(fill);
+        var layout = new RectangleF(r.X + 16, r.Y, r.Width - 32, r.Height);
+        using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(text, font, brush, layout, fmt);
     }
 
     private void CaptureSozluk(string dir)

@@ -15,6 +15,8 @@ public sealed class HazirSatir
 {
     [JsonPropertyName("en")] public string En { get; set; } = "";
     [JsonPropertyName("tr")] public string Tr { get; set; } = "";
+    /// <summary>"dialogue" (default) or "objective". Missing values stay dialogue.</summary>
+    [JsonPropertyName("type")] public string? Type { get; set; }
 }
 
 /// <summary>Normalized lookup over one game's lines. Exact, fuzzy (>= 0.88), prefix, and a joined previous line.</summary>
@@ -25,6 +27,8 @@ public sealed class HazirDizin
     public int Satir { get; }
 
     private readonly Dictionary<string, string> _tam = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _tur = new(StringComparer.Ordinal);
+    private string _sonTur = "dialogue";
     private readonly Entry[] _entries;
     private readonly Dictionary<int, List<int>> _boy = new();
     private readonly Dictionary<string, List<int>> _onEk = new(StringComparer.Ordinal);
@@ -32,16 +36,20 @@ public sealed class HazirDizin
     private readonly record struct Entry(string Norm, string Tr);
 
     public HazirDizin(string oyun, IEnumerable<(string En, string Tr)> satirlar)
+        : this(oyun, satirlar.Select(s => (s.En, s.Tr, "dialogue"))) { }
+
+    public HazirDizin(string oyun, IEnumerable<(string En, string Tr, string Tur)> satirlar)
     {
         Oyun = oyun;
         var list = new List<Entry>();
-        foreach (var (en, tr) in satirlar)
+        foreach (var (en, tr, tur) in satirlar)
         {
             var n = Norm(en);
             var t = (tr ?? "").Trim();
             if (n.Length == 0 || t.Length == 0) continue;
             if (_tam.ContainsKey(n)) continue;
             _tam[n] = t;
+            _tur[n] = tur == "objective" ? "objective" : "dialogue";
             int i = list.Count;
             list.Add(new Entry(n, t));
             if (!_boy.TryGetValue(n.Length, out var bucket)) _boy[n.Length] = bucket = new List<int>();
@@ -83,21 +91,25 @@ public sealed class HazirDizin
         return sb.ToString();
     }
 
-    public string? Ara(string ocr, string? onceki = null)
+    public string? Ara(string ocr, string? onceki = null) => Eslesme(ocr, onceki)?.Tr;
+
+    public (string Tr, string Tur)? Eslesme(string ocr, string? onceki = null)
     {
         var n = Norm(ocr);
         var hit = Bul(n);
-        if (hit != null || string.IsNullOrWhiteSpace(onceki)) return hit;
+        if (hit != null || string.IsNullOrWhiteSpace(onceki)) return hit == null ? null : (hit, _sonTur);
         var joined = Norm(onceki + " " + ocr);
         if (joined.Length <= n.Length) return null;
-        return Bul(joined);
+        hit = Bul(joined);
+        return hit == null ? null : (hit, _sonTur);
     }
 
     private string? Bul(string n)
     {
         if (n.Length == 0) return null;
-        if (_tam.TryGetValue(n, out var exact)) return exact;
+        if (_tam.TryGetValue(n, out var exact)) { _sonTur = _tur.GetValueOrDefault(n) ?? "dialogue"; return exact; }
         string? best = null;
+        string bestTur = "dialogue";
         double bestScore = Esik - 0.0001;
         int bestLen = int.MaxValue;
         if (n.Length >= 8)
@@ -108,7 +120,7 @@ public sealed class HazirDizin
             for (int len = lo; len <= hi; len++)
             {
                 if (!_boy.TryGetValue(len, out var ids)) continue;
-                foreach (var i in ids) Consider(_entries[i], n, ref best, ref bestScore, ref bestLen);
+                foreach (var i in ids) Consider(_entries[i], n, ref best, ref bestTur, ref bestScore, ref bestLen);
             }
         }
         if (n.Length >= 12 && _onEk.TryGetValue(n[..3], out var prefixes))
@@ -121,14 +133,16 @@ public sealed class HazirDizin
                 {
                     bestScore = 1;
                     best = e.Tr;
+                    bestTur = _tur.GetValueOrDefault(e.Norm) ?? "dialogue";
                     bestLen = e.Norm.Length;
                 }
             }
         }
+        _sonTur = bestTur;
         return best;
     }
 
-    private static void Consider(Entry e, string n, ref string? best, ref double bestScore, ref int bestLen)
+    private void Consider(Entry e, string n, ref string? best, ref string bestTur, ref double bestScore, ref int bestLen)
     {
         int maxLen = Math.Max(e.Norm.Length, n.Length);
         int limit = (int)Math.Floor((1 - Esik) * maxLen);
@@ -139,6 +153,7 @@ public sealed class HazirDizin
         {
             bestScore = score;
             best = e.Tr;
+            bestTur = _tur.GetValueOrDefault(e.Norm) ?? "dialogue";
             bestLen = e.Norm.Length;
         }
     }
@@ -205,7 +220,7 @@ public sealed class HazirKutuphane
     public static HazirKutuphane Oku(string folder)
     {
         if (!Directory.Exists(folder)) return Bos;
-        var byGame = new Dictionary<string, List<(string En, string Tr)>>(StringComparer.OrdinalIgnoreCase);
+        var byGame = new Dictionary<string, List<(string En, string Tr, string Tur)>>(StringComparer.OrdinalIgnoreCase);
         var stamp = new StringBuilder();
         foreach (var file in Directory.EnumerateFiles(folder, "*.json").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
         {
@@ -220,7 +235,8 @@ public sealed class HazirKutuphane
                 foreach (var line in dosya.Lines)
                 {
                     if (line == null || string.IsNullOrWhiteSpace(line.En) || string.IsNullOrWhiteSpace(line.Tr)) continue;
-                    list.Add((line.En, line.Tr));
+                    string tur = line.Type?.Equals("objective", StringComparison.OrdinalIgnoreCase) == true ? "objective" : "dialogue";
+                    list.Add((line.En, line.Tr, tur));
                 }
             }
             catch (Exception) { /* one bad file does not drop the others */ }

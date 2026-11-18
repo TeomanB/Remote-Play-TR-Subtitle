@@ -60,11 +60,11 @@ public sealed class TranslationProcessor : ITranslateBackend
         if (opt.Source.StartsWith("en", StringComparison.OrdinalIgnoreCase)) src = Profanity.Uncensor(src);
         if (opt.Hazir is { } hazir)
         {
-            var hazirTr = hazir.Ara(src, _onceki);
-            if (!string.IsNullOrEmpty(hazirTr))
+            var eslesme = hazir.Eslesme(src, _onceki);
+            if (eslesme != null)
             {
                 _onceki = null;
-                return new TranslateOutcome(TranslateStatus.Ok, hazirTr);
+                return new TranslateOutcome(TranslateStatus.Ok, eslesme.Value.Tr, Kind: eslesme.Value.Tur);
             }
             _onceki = src;
             if (opt.SadeceHazir) return new TranslateOutcome(TranslateStatus.Skipped);
@@ -101,7 +101,8 @@ public sealed class TranslationProcessor : ITranslateBackend
         var output = Profanity.Compose(plan, body, Profanity.CountSentences(plan.Body), startsWithName);
         if (output.Length > 0 && char.IsLower(output[0]) && !startsWithName)
             output = char.ToUpper(output[0], TurkishSuffix.Tr) + output[1..];
-        return output.Length == 0 ? new TranslateOutcome(TranslateStatus.Failed) : new TranslateOutcome(TranslateStatus.Ok, output);
+        string kind = GorevSezici.Benzir(text) ? "objective" : "dialogue";
+        return output.Length == 0 ? new TranslateOutcome(TranslateStatus.Failed) : new TranslateOutcome(TranslateStatus.Ok, output, Kind: kind);
     }
 
     private static bool HedefZaten(ProcessorOptions opt, string? detected) =>

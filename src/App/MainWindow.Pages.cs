@@ -88,6 +88,7 @@ internal sealed partial class MainWindow
     {
         _boxSeg.Add("Orijinal altyazı", Theme.KeyOrig);
         _boxSeg.Add("Çeviri", Theme.Acc);
+        _boxSeg.Add("Görev", Theme.Hex(0x7A4FBF));
         _boxSeg.SelectedIndexChanged += (_, _) => SelectBox(_boxSeg.SelectedIndex);
         foreach (var input in GeometryInputs())
         {
