@@ -18,6 +18,7 @@ internal static class Program
 
         AppPaths.Init();
         ErrorLog.Path = AppPaths.ErrorLogFile;
+        TanilamaLog.Path = AppPaths.TanilamaFile;
         SozlukDosyasi.Yukle();
 
         // Last-resort handlers: log and keep running wherever the runtime allows it.
@@ -58,6 +59,7 @@ internal static class AppPaths
     public static string Dir { get; private set; } = AppContext.BaseDirectory;
     public static string SettingsFile => Path.Combine(Dir, "ayarlar.json");
     public static string ErrorLogFile => Path.Combine(Dir, "hata.log");
+    public static string TanilamaFile => Path.Combine(Dir, "tanilama.log");
 
     /// <summary>
     /// Prefer the executable directory so a portable copy and the per-user install

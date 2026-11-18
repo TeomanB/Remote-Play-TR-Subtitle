@@ -197,6 +197,7 @@ public sealed class TranslationScheduler : IDisposable
     private async Task RunAsync(Request req)
     {
         TranslateOutcome outcome;
+        var started = System.Diagnostics.Stopwatch.StartNew();
         int c = Interlocked.Increment(ref _concurrent);
         InterlockedMax(ref _maxConcurrent, c);
         try
@@ -236,6 +237,7 @@ public sealed class TranslationScheduler : IDisposable
             Interlocked.Decrement(ref _concurrent);
         }
 
+        TanilamaLog.Yaz("ceviri", outcome.Status + " " + started.ElapsedMilliseconds + "ms kind=" + (outcome.Kind ?? "-") + " «" + req.Text + "»");
         try { Complete(req, outcome); }
         catch (Exception) { /* never let a completion kill anything */ }
         finally { req.Cts.Dispose(); }

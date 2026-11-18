@@ -64,9 +64,11 @@ public sealed class TranslationProcessor : ITranslateBackend
             if (eslesme != null)
             {
                 _onceki = null;
+                TanilamaLog.Yaz("paket", "vuruş " + eslesme.Value.Tur + " «" + src + "»");
                 return new TranslateOutcome(TranslateStatus.Ok, eslesme.Value.Tr, Kind: eslesme.Value.Tur);
             }
             _onceki = src;
+            TanilamaLog.Yaz("paket", "ıska «" + src + "»");
             if (opt.SadeceHazir) return new TranslateOutcome(TranslateStatus.Skipped);
         }
 
