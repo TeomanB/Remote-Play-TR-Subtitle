@@ -23,6 +23,8 @@ internal sealed partial class MainWindow : Form
     private readonly TitleButton _help = new() { Glyph = Ic.Info };
     private readonly CoachTour _tour = new();
     private int _pageBeforeTour;
+    /// <summary>Screenshot-only: reproduce the 1.5.0 Sözlük stacking bug.</summary>
+    private bool _legacySozluk;
 
     private readonly NavItem[] _nav =
     {
@@ -61,7 +63,7 @@ internal sealed partial class MainWindow : Form
     public MainWindow(IAppHost host)
     {
         _host = host;
-        Theme.SetScale(DeviceDpi / 96f);
+        Theme.SetScale(Theme.ForcedScale ?? DeviceDpi / 96f);
         AutoScaleMode = AutoScaleMode.None;
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterScreen;
@@ -102,6 +104,17 @@ internal sealed partial class MainWindow : Form
             Grab();
             RefreshAll();
             if (_host.Current.AcilistaGuncellemeDenetle) _ = CheckUpdatesAsync(false);
+            var sozluk = Environment.GetEnvironmentVariable("SOZLUK_SHOTS");
+            if (!string.IsNullOrEmpty(sozluk))
+            {
+                try { CaptureSozluk(sozluk); Environment.Exit(0); }
+                catch (Exception ex)
+                {
+                    try { File.WriteAllText(Path.Combine(sozluk, "error.txt"), ex.ToString()); } catch (Exception) { }
+                    Environment.Exit(1);
+                }
+                return;
+            }
             var shots = Environment.GetEnvironmentVariable("CEVIRMEN_SHOTS");
             if (!string.IsNullOrEmpty(shots))
             {
@@ -938,6 +951,49 @@ internal sealed partial class MainWindow : Form
         };
         ShowNav(0);
         return list.ToArray();
+    }
+
+    private void CaptureSozluk(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        _tour.Visible = false;
+        var seeded = HazirKutuphane.From(
+            new HazirDizin("Grand Theft Auto VI — Leonida", new (string En, string Tr)[] { ("Get in.", "Bin.") }),
+            new HazirDizin("Red Dead Redemption 2", new (string En, string Tr)[] { ("Howdy.", "Selam.") }));
+        Patch(s =>
+        {
+            s.TanitimGoruldu = true;
+            s.SeciliHazirOyun = "Grand Theft Auto VI — Leonida";
+            s.Sozluk = new List<SozlukGirdisi>
+            {
+                new("Mount Kalaga National Park", "Mount Kalaga Ulusal Parkı"),
+                new("a long english line", "Çok uzun bir Türkçe karşılık satırı kaymadan dursun"),
+            };
+        });
+        (float Scale, bool Legacy, string Name)[] frames =
+        {
+            (1f, true, "before-100.png"),
+            (1.5f, true, "before-150.png"),
+            (1f, false, "after-100.png"),
+            (1.5f, false, "after-150.png"),
+        };
+        foreach (var frame in frames)
+        {
+            Theme.SetScale(frame.Scale);
+            _legacySozluk = frame.Legacy;
+            var min = new Size(Theme.D(1060), Theme.D(680));
+            MinimumSize = min;
+            var work = Screen.FromHandle(Handle).WorkingArea;
+            Size = new Size(Math.Min(min.Width, work.Width), Math.Min(min.Height, work.Height));
+            WindowState = FormWindowState.Normal;
+            Arrange();
+            ShowNav(2);
+            HazirKutuphane.Use(seeded);
+            FillGlossary();
+            _scroll.Relayout();
+            Refresh();
+            SaveShot(dir, frame.Name);
+        }
     }
 
     private void CaptureShots(string dir)

@@ -338,9 +338,12 @@ internal sealed partial class MainWindow
             foreach (var c in new Control[] { _packBack, _packToggle, _packTerms }) c.Visible = detail;
             if (detail) return ArrangePackDetail(p, w, y);
 
-            y = OptionBox(p, y, w, "Canlı çeviri yapma (sadece hazır paket)", "Seçili oyunda eşleşme yoksa Google'a gitmez, satır gizlenir. Eşleşen satır paketin Türkçesini gösterir.", _packOnly);
-            p.AddSection(y, w, "Hazır çeviri paketleri");
-            y += Theme.D(22);
+            // _legacySozluk is only set while saving the 1.5.0 "before" screenshot.
+            if (_legacySozluk)
+                y = OptionBox(p, y, w, "Canlı çeviri yapma (sadece hazır paket)", "Seçili oyunda eşleşme yoksa Google'a gitmez, satır gizlenir. Eşleşen satır paketin Türkçesini gösterir.", _packOnly);
+            else
+                y += OptionBox(p, y, w, "Canlı çeviri yapma (sadece hazır paket)", "Seçili oyunda eşleşme yoksa Google'a gitmez, satır gizlenir. Eşleşen satır paketin Türkçesini gösterir.", _packOnly) + Theme.D(14);
+            y += p.AddSection(y, w, "Hazır çeviri paketleri") + Theme.D(8);
             if (_linePacks.Count == 0)
                 y += p.AddWrap(0, y, w, "Paket yok. json dosyalarını klasöre bırak.", Theme.Small, Theme.Tx2) + Theme.D(8);
             else
@@ -348,31 +351,29 @@ internal sealed partial class MainWindow
                 InspectorPage.Put(_linePacks, 0, y, w, _linePacks.Height);
                 y += _linePacks.Height + Theme.D(8);
             }
-            InspectorPage.Put(_openLines, 0, y, Theme.D(120), Theme.D(32));
+            int openW = Math.Max(Theme.D(120), Theme.Measure(_openLines.Text, Theme.SmallSemi).Width + Theme.D(28));
+            InspectorPage.Put(_openLines, 0, y, Math.Min(w, openW), Theme.D(32));
             y += Theme.D(32) + Theme.D(16);
 
             InspectorPage.PutInput(_search, 0, y, w, Theme.D(36));
             y += Theme.D(36) + Theme.D(18);
             if (_gamePacks.Count > 0)
             {
-                p.AddSection(y, w, "Oyun paketleri");
-                y += Theme.D(22);
+                y += p.AddSection(y, w, "Oyun paketleri") + Theme.D(8);
                 InspectorPage.Put(_gamePacks, 0, y, w, _gamePacks.Height);
                 y += _gamePacks.Height + Theme.D(14);
             }
             _gamePacks.Visible = _gamePacks.Count > 0;
             if (_basePacks.Count > 0)
             {
-                p.AddSection(y, w, "Genel paketler");
-                y += Theme.D(22);
+                y += p.AddSection(y, w, "Genel paketler") + Theme.D(8);
                 InspectorPage.Put(_basePacks, 0, y, w, _basePacks.Height);
                 y += _basePacks.Height + Theme.D(14);
             }
             _basePacks.Visible = _basePacks.Count > 0;
             if (_gamePacks.Count == 0 && _basePacks.Count == 0) y += Theme.D(4);
 
-            p.AddSection(y, w, "Terimlerim");
-            y += Theme.D(22);
+            y += p.AddSection(y, w, "Terimlerim") + Theme.D(8);
             int add = Theme.D(34), arrow = Theme.D(20), gap = Theme.D(4);
             int col = (w - add - arrow - 2 * gap - Theme.D(4)) / 2;
             InspectorPage.PutInput(_termEn, 0, y, col, Theme.D(34));
@@ -687,7 +688,7 @@ internal sealed partial class MainWindow
         int x = tile + gap;
         int tw = w - x - (right != null ? rightW + gap : 0);
         y += pad;
-        int titleH = Theme.D(19);
+        int titleH = Math.Max(Theme.D(19), Theme.Measure(title, Theme.BodySemi).Height);
         int subH = Theme.WrapHeight(sub, Theme.Small, tw);
         int h = titleH + Theme.D(2) + subH + (badge != null ? Theme.D(28) : 0);
         h = Math.Max(h, tile);

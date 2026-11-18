@@ -7,6 +7,8 @@ namespace AltyaziCevirici.Ui;
 internal static class Theme
 {
     public static float S { get; private set; } = 1f;
+    /// <summary>When set, the window uses this scale instead of the monitor DPI. Screenshot runs only.</summary>
+    public static float? ForcedScale { get; set; }
 
     /// <summary>Design pixels (96 dpi) to device pixels.</summary>
     public static int D(float v) => (int)Math.Round(v * S);
@@ -197,14 +199,31 @@ internal static class Theme
     public const TextFormatFlags Right = TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix;
     public const TextFormatFlags Wrap = TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.NoPadding | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix;
 
-    public static void Text(Graphics g, string? s, Font f, Rectangle r, Color c, TextFormatFlags flags = Left) =>
+    public static void Text(Graphics g, string? s, Font f, Rectangle r, Color c, TextFormatFlags flags = Left)
+    {
+        if (r.Width <= 0 || r.Height <= 0) return;
+        // Wrapped text is clipped so a tall line cannot paint over the next row.
+        if ((flags & TextFormatFlags.WordBreak) != 0)
+        {
+            var state = g.Save();
+            g.SetClip(r);
+            TextRenderer.DrawText(g, s ?? "", f, r, c, flags);
+            g.Restore(state);
+            return;
+        }
         TextRenderer.DrawText(g, s ?? "", f, r, c, flags);
+    }
 
     public static Size Measure(string? s, Font f, TextFormatFlags flags = Left) =>
         TextRenderer.MeasureText(s ?? "", f, new Size(int.MaxValue, int.MaxValue), flags);
 
-    public static int WrapHeight(string? s, Font f, int width) =>
-        TextRenderer.MeasureText(s ?? "", f, new Size(Math.Max(1, width), int.MaxValue), Wrap).Height;
+    public static int WrapHeight(string? s, Font f, int width)
+    {
+        // Measure a couple of pixels narrower than we draw. TextRenderer otherwise wraps
+        // one word later than it measured and the last line spills into the next control.
+        int measureWidth = Math.Max(1, width - D(4));
+        return TextRenderer.MeasureText(s ?? "", f, new Size(measureWidth, int.MaxValue), Wrap).Height + D(2);
+    }
 
     public static void Glyph(Graphics g, string glyph, Font iconFont, Rectangle r, Color c) =>
         TextRenderer.DrawText(g, glyph, iconFont, r, c, Center);

@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Tercüman"
 #ifndef MyAppVersion
-#define MyAppVersion "1.5.0"
+#define MyAppVersion "1.5.1"
 #endif
 #define MyAppVersionInfo MyAppVersion + ".0"
 #define MyAppPublisher "Teo"

@@ -173,6 +173,9 @@ public sealed class HazirKutuphane
     public static readonly HazirKutuphane Bos = new(Array.Empty<HazirDizin>(), "");
     public static HazirKutuphane Guncel { get; private set; } = Bos;
 
+    public static HazirKutuphane From(params HazirDizin[] paketler) => new(paketler, "shot");
+    public static void Use(HazirKutuphane k) => Guncel = k;
+
     public IReadOnlyList<HazirDizin> Paketler { get; }
     public string Imza { get; }
 
