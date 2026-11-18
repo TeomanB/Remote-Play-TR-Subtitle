@@ -6,7 +6,7 @@ Sürüm **1.2.0**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir 
 
 ## İndirme
 
-Hazır dosyalar [Releases](https://github.com/TeomanB/altyazi-cevirici/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.2.0` gibi bir sürüm oluşturulur veya güncellenir.
+Hazır dosyalar [Releases](https://github.com/TeomanB/Remote-Play-TR-Subtitle/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.2.0` gibi bir sürüm oluşturulur veya güncellenir.
 
 | Dosya | Ne işe yarar |
 | --- | --- |
