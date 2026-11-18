@@ -1201,6 +1201,7 @@ internal sealed partial class MainWindow : Form
         _stage.ContinueDrag(dx, dy);
         if (_stage.Box(box) == before)
             throw new InvalidOperationException("İpucu kutusu yerinden oynamadı: " + box);
+        RefreshGeometryFields();
         Refresh();
         SaveShot(dir, $"ipucu-{which}-after-{tag}.png");
     }
