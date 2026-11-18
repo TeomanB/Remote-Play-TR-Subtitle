@@ -13,4 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\AltyaziCevirici.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\data\packs\gta6.json" Link="data\packs\gta6.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

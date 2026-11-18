@@ -80,8 +80,11 @@ public sealed class GoogleTranslator : ITranslateBackend, ILanguageBackend, IDis
             var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             LastHttpVersion = resp.Version;
             var parsed = GoogleTranslateParser.Parse(json);
+            var detected = GoogleTranslateParser.DetectedLanguage(json);
             if (parsed != null) LastClient = client;
-            return parsed == null ? new TranslateOutcome(TranslateStatus.Failed) : new TranslateOutcome(TranslateStatus.Ok, parsed);
+            return parsed == null
+                ? new TranslateOutcome(TranslateStatus.Failed, Detected: detected)
+                : new TranslateOutcome(TranslateStatus.Ok, parsed, Detected: detected);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

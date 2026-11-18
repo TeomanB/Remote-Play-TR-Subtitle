@@ -50,6 +50,8 @@ public sealed class TranslationProcessor : ITranslateBackend
         var opt = _options;
         var protector = _protector;
         var src = text.Trim();
+        if (opt.Target.StartsWith("tr", StringComparison.OrdinalIgnoreCase) && OcrGate.MuhtemelenTurkce(src))
+            return new TranslateOutcome(TranslateStatus.Skipped);
         if (opt.Source.StartsWith("en", StringComparison.OrdinalIgnoreCase)) src = Profanity.Uncensor(src);
 
         Profanity.Plan plan = opt.EnglishToTurkish
@@ -63,6 +65,7 @@ public sealed class TranslationProcessor : ITranslateBackend
             bool midSentence = plan.Prefixes.Count > 0 && plan.Prefixes[^1].Sep == ",";
             var masked = protector.Protect(plan.Body, midSentence);
             var r = await _inner.TranslateAsync(masked.Text, opt.Source, opt.Target, ct).ConfigureAwait(false);
+            if (HedefZaten(opt, r.Detected)) return new TranslateOutcome(TranslateStatus.Skipped, Detected: r.Detected);
             if (r.Status != TranslateStatus.Ok || string.IsNullOrEmpty(r.Text)) return r;
             string? restored = masked.Terms.Count == 0 ? r.Text : TermProtector.Restore(r.Text!, masked);
             if (restored == null)
@@ -84,4 +87,9 @@ public sealed class TranslationProcessor : ITranslateBackend
             output = char.ToUpper(output[0], TurkishSuffix.Tr) + output[1..];
         return output.Length == 0 ? new TranslateOutcome(TranslateStatus.Failed) : new TranslateOutcome(TranslateStatus.Ok, output);
     }
+
+    private static bool HedefZaten(ProcessorOptions opt, string? detected) =>
+        !string.IsNullOrWhiteSpace(detected)
+        && detected.StartsWith("tr", StringComparison.OrdinalIgnoreCase)
+        && opt.Target.StartsWith("tr", StringComparison.OrdinalIgnoreCase);
 }

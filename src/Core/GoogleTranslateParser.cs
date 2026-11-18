@@ -33,6 +33,23 @@ public static class GoogleTranslateParser
         }
     }
 
+    /// <summary>Detected source language from a gtx payload (the string at index 2), or null.</summary>
+    public static string? DetectedLanguage(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() < 3) return null;
+            return root[2].ValueKind == JsonValueKind.String ? root[2].GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public const string MainClient = "gtx";
     /// <summary>Same endpoint and model, different client id; used only while "gtx" is rate limited.</summary>
     public const string BackupClient = "dict-chrome-ex";

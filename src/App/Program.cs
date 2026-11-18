@@ -9,6 +9,7 @@ internal static class Program
     {
         AppPaths.Init();
         ErrorLog.Path = AppPaths.ErrorLogFile;
+        SozlukDosyasi.Yukle();
 
         // Last-resort handlers: log and keep running wherever the runtime allows it.
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);

@@ -1,4 +1,4 @@
-﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.3 - kontrol merkezi)
+﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.4 - önizleme tuvali ve sözlük paketleri)
 ===========================
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
