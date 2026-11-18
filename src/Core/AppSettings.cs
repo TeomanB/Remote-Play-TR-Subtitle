@@ -61,6 +61,34 @@ public sealed class AppSettings
     /// <summary>Tag the user chose to ignore, such as v1.4.0. Empty = none.</summary>
     public string AtlananSurum { get; set; } = "";
 
+    // ---- v1.5 appearance ----
+    /// <summary>Font family of the Turkish line. Missing fonts fall back to Segoe UI when drawn.</summary>
+    public string YaziTipi { get; set; } = "Segoe UI";
+    /// <summary>Outline color as #RRGGBB.</summary>
+    public string DisCizgiRengi { get; set; } = "#000000";
+
+    // ---- v1.5 control center state (restored on the next start) ----
+    public bool OrijinalKilitli { get; set; }
+    public bool CeviriKilitli { get; set; }
+    /// <summary>Preview source: "" = not chosen (auto-detect Remote Play), "ekran" = whole monitor, otherwise a window title.</summary>
+    public string KaynakPencere { get; set; } = "";
+    /// <summary>Control center bounds in screen pixels. Width 0 = default size, centered.</summary>
+    public int PencereX { get; set; }
+    public int PencereY { get; set; }
+    public int PencereGenislik { get; set; }
+    public int PencereYukseklik { get; set; }
+    public bool PencereBuyuk { get; set; }
+    /// <summary>Last sidebar page: 0 Önizleme, 1 Görünüm, 2 Sözlük, 3 Gelişmiş.</summary>
+    public int SonSayfa { get; set; }
+    /// <summary>Start with Windows (mirrored to the HKCU Run key).</summary>
+    public bool WindowsIleBaslat { get; set; }
+    /// <summary>The first-run coach tour has been finished or skipped.</summary>
+    public bool TanitimGoruldu { get; set; }
+    /// <summary>Game name of the local lines pack used for ready translations. Empty = the only loaded pack, if there is one.</summary>
+    public string SeciliHazirOyun { get; set; } = "";
+    /// <summary>Games whose misses must not call Google. A match still uses the pack.</summary>
+    public List<string>? SadeceHazirPaket { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
@@ -130,12 +158,26 @@ public sealed class AppSettings
         KaynakDil = CleanLang(KaynakDil, "en");
         HedefDil = CleanLang(HedefDil, "tr");
         if (!TryParseColor(YaziRengi, out _)) YaziRengi = "#FFFFFF";
+        if (!TryParseColor(DisCizgiRengi, out _)) DisCizgiRengi = "#000000";
+        YaziTipi = CleanFont(YaziTipi);
+        KaynakPencere = string.IsNullOrWhiteSpace(KaynakPencere) || KaynakPencere.Length > 256 || KaynakPencere.Any(char.IsControl) ? "" : KaynakPencere.Trim();
+        SonSayfa = Math.Clamp(SonSayfa, 0, 3);
+        if (PencereGenislik < 200 || PencereYukseklik < 150) { PencereGenislik = 0; PencereYukseklik = 0; }
+        PencereGenislik = Math.Min(PencereGenislik, 16000);
+        PencereYukseklik = Math.Min(PencereYukseklik, 16000);
+        PencereX = Math.Clamp(PencereX, -16000, 32000);
+        PencereY = Math.Clamp(PencereY, -16000, 32000);
         Sozluk ??= new List<SozlukGirdisi>();
         AcikPaketler ??= new List<string>(SozlukKutuphanesi.VarsayilanAcik);
         AcikPaketler.RemoveAll(string.IsNullOrWhiteSpace);
         for (int i = 0; i < AcikPaketler.Count; i++) AcikPaketler[i] = AcikPaketler[i].Trim().ToLowerInvariant();
         Sozluk.RemoveAll(g => g == null || string.IsNullOrWhiteSpace(g.Ingilizce));
         foreach (var g in Sozluk) { g.Ingilizce = g.Ingilizce.Trim(); g.Turkce = (g.Turkce ?? string.Empty).Trim(); }
+        SeciliHazirOyun = string.IsNullOrWhiteSpace(SeciliHazirOyun) ? "" : SeciliHazirOyun.Trim();
+        if (SeciliHazirOyun.Length > 80) SeciliHazirOyun = SeciliHazirOyun[..80];
+        SadeceHazirPaket ??= new List<string>();
+        SadeceHazirPaket.RemoveAll(string.IsNullOrWhiteSpace);
+        for (int i = 0; i < SadeceHazirPaket.Count; i++) SadeceHazirPaket[i] = SadeceHazirPaket[i].Trim();
     }
 
     private static string CleanTag(string? v)
@@ -152,6 +194,13 @@ public sealed class AppSettings
         v = v.Trim();
         if (v.Length > 64 || v.Any(c => c < 32 || c == '"')) return "";
         return v;
+    }
+
+    private static string CleanFont(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return "Segoe UI";
+        v = v.Trim();
+        return v.Length <= 64 && v.All(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_') ? v : "Segoe UI";
     }
 
     private static string CleanLang(string? v, string def)
@@ -172,5 +221,11 @@ public sealed class AppSettings
         return true;
     }
 
-    public ProcessorOptions ToProcessorOptions() => new(KaynakDil, HedefDil, SozlukKutuphanesi.Etkin(this), OzelIsimleriKoru);
+    public ProcessorOptions ToProcessorOptions(HazirKutuphane? hazir = null)
+    {
+        var k = hazir ?? HazirKutuphane.Bos;
+        var dizin = k.Sec(SeciliHazirOyun);
+        bool only = dizin != null && (SadeceHazirPaket?.Any(g => g.Equals(dizin.Oyun, StringComparison.OrdinalIgnoreCase)) ?? false);
+        return new(KaynakDil, HedefDil, SozlukKutuphanesi.Etkin(this), OzelIsimleriKoru, dizin, only);
+    }
 }

@@ -6,6 +6,10 @@
 [Ll]og/
 [Ll]ogs/
 
+# Local pre-translated subtitle lines. Real packs live in %AppData%\AltyaziCevirici\packs\lines and must not be committed.
+packs/lines/
+**/packs/lines/*.json
+
 # User data written next to a local build
 ayarlar.json
 hata.log

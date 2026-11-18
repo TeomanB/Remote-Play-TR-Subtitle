@@ -1,89 +1,192 @@
+﻿using System.Globalization;
 using System.Runtime.InteropServices;
 using AltyaziCevirici.Core;
+using AltyaziCevirici.Ui;
 
 namespace AltyaziCevirici;
 
-/// <summary>Borderless control center: a large preview is the canvas, settings sit underneath.</summary>
-internal sealed class MainWindow : Form
+/// <summary>
+/// Control center (docs/design/claude-a, concept A "Stüdyo"): sidebar, large live preview with the two boxes,
+/// source bar, last translation, and an inspector on the right. Custom title bar on a normal sizable window, so
+/// Windows keeps the shadow, rounded corners, snapping, and resize borders.
+/// </summary>
+internal sealed partial class MainWindow : Form
 {
-    public const string OrnekAltyazi = PreviewCanvas.Ornek;
+    public const string OrnekAltyazi = "Polisler gelmeden buradan çıkmamız lazım.";
 
     private readonly IAppHost _host;
-    private readonly PreviewCanvas _preview = new();
-    private readonly FlowLayoutPanel _sources = new() { Height = 44, Dock = DockStyle.Top, WrapContents = false, AutoScroll = true, Padding = new Padding(8, 6, 8, 0) };
-    private readonly Label _status = new() { AutoSize = false, Height = 28, Dock = DockStyle.Bottom, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0) };
-    private readonly Panel _banner = new() { Height = 40, Dock = DockStyle.Top, Visible = false };
-    private readonly Panel _ocrBanner = new() { Height = 40, Dock = DockStyle.Top, Visible = false };
-    private readonly Label _bannerText = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0) };
-    private readonly Label _ocrText = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0) };
-    private readonly ProgressBar _progress = new() { Width = 140, Height = 16, Visible = false };
-    private readonly Panel _pages = new() { Height = 230, Dock = DockStyle.Bottom, Padding = new Padding(12, 4, 12, 8) };
-    private readonly FlatButton _start = new() { Text = "Başlat", Primary = true, Width = 140, Height = 40 };
     private readonly System.Windows.Forms.Timer _tick = new() { Interval = 400 };
-    private readonly List<FlatButton> _segments = new();
-    private readonly List<(string Id, ToggleSwitch Toggle)> _packs = new();
-    private Rectangle _screen = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+
+    private readonly TitleButton _min = new() { Glyph = Ic.Min };
+    private readonly TitleButton _max = new() { Glyph = Ic.Max };
+    private readonly TitleButton _close = new() { Glyph = Ic.ChromeClose, IsClose = true };
+    private readonly TitleButton _help = new() { Glyph = Ic.Info };
+    private readonly CoachTour _tour = new();
+    private int _pageBeforeTour;
+
+    private readonly NavItem[] _nav =
+    {
+        new() { Text = "Önizleme", Glyph = Ic.Crop },
+        new() { Text = "Görünüm", Glyph = Ic.Font },
+        new() { Text = "Sözlük", Glyph = Ic.Book },
+        new() { Text = "Gelişmiş", Glyph = Ic.Sliders },
+    };
+    private readonly UiCard _statusCard = new();
+    private readonly UiButton _run = new() { Kind = ButtonKind.Primary, Large = true, Glyph = Ic.Play, Text = "Başlat" };
+
+    private readonly LegendChip _chipOrig = new() { Text = "Orijinal altyazı", Key = Theme.KeyOrig };
+    private readonly LegendChip _chipTrans = new() { Text = "Çeviri", Key = Theme.Acc };
+    private readonly UiCard _previewCard = new();
+    private readonly PreviewStage _stage = new();
+    private readonly UiCard _sourceCard = new();
+    private readonly UiDropdown _sourceDrop = new() { Glyph = Ic.Screen };
+    private readonly UiDropdown _monitorDrop = new();
+    private readonly UiButton _refresh = new() { Kind = ButtonKind.Ghost, Glyph = Ic.Refresh };
+    private readonly UiCard _lastCard = new();
+
+    private readonly UiCard _inspector = new();
+    private readonly ScrollHost _scroll = new();
+
+    private Rectangle _screen;
     private IntPtr _window;
-    private int _page;
+    private string _windowTitle = "";
+    private DateTime _lastFrame = DateTime.MinValue;
+    private Rectangle _savedRegion;
+    private int _navIndex;
     private bool _loading = true;
     private bool _allowExit;
-    private bool _checking;
-    private bool _ocrInstalling;
-    private bool _sync;
-    private GuncellemeBilgisi? _offer;
-    private FlatSlider? _size, _opacity, _outline;
-    private Label? _sizeValue, _opacityValue, _outlineValue;
-    private TextBox? _search;
-    private ListBox? _glossary;
-    private CheckBox? _autoUpdate;
+    private Rectangle _warnHit = Rectangle.Empty;
+    private Rectangle _headerRect, _titleRect;
 
     public MainWindow(IAppHost host)
     {
         _host = host;
-        FormBorderStyle = FormBorderStyle.None;
+        Theme.SetScale(DeviceDpi / 96f);
+        AutoScaleMode = AutoScaleMode.None;
+        FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1180, 780);
-        MinimumSize = new Size(960, 640);
-        BackColor = UiTheme.Bg;
-        ForeColor = UiTheme.Text;
-        Font = UiTheme.Font(10f);
+        Text = AppInfo.DisplayName;
+        BackColor = Theme.Bg;
+        ForeColor = Theme.Tx;
+        Font = Theme.Body;
         DoubleBuffered = true;
-        Text = "Altyazı Çevirici";
-        try { Icon = IconFactory.Window(); } catch (Exception) { /* exe icon still applies */ }
+        KeyPreview = true;
+        SetStyle(ControlStyles.ResizeRedraw, true);
+        ClientSize = new Size(Theme.D(1280), Theme.D(800));
+        MinimumSize = new Size(Theme.D(1060), Theme.D(680));
+        try { Icon = IconFactory.Window(); } catch (Exception ex) { ErrorLog.Write(ex, "icon"); }
 
-        Controls.Add(_preview);
-        Controls.Add(BuildSourceRow());
-        Controls.Add(_pages);
-        Controls.Add(_status);
-        Controls.Add(BuildOcrBanner());
-        Controls.Add(BuildUpdateBanner());
-        Controls.Add(BuildTitle());
-        _preview.RegionsChanged += (_, _) => SaveRegions();
-        _start.Click += (_, _) => { if (_host.IsRunning) _host.StopCapture(); else _host.StartCapture(); };
+        BuildChrome();
+        BuildSidebar();
+        BuildCenter();
+        BuildInspector();
+        _tour.Preparing += (_, index) =>
+        {
+            if ((uint)index < (uint)_cues.Length) ShowNav(_cues[index].Page);
+            Arrange();
+        };
+        _tour.Closed += (_, _) => EndTour();
+        Controls.Add(_tour);
+
         _tick.Tick += (_, _) => { Grab(); RefreshStatus(); };
-        _tick.Start();
-        BuildPages();
-        LoadFromHost();
         _host.StateChanged += OnState;
+        LoadFromHost();
+        ShowNav(_host.Current.SonSayfa);
+        _loading = false;
+        SyncAutoStart();
         Shown += (_, _) =>
         {
-            RefreshOcrBanner();
+            if (_host.Current.PencereBuyuk) WindowState = FormWindowState.Maximized;
+            _windowStateSeen = WindowState;
+            _tick.Start();
+            Grab();
+            RefreshAll();
             if (_host.Current.AcilistaGuncellemeDenetle) _ = CheckUpdatesAsync(false);
+            var shots = Environment.GetEnvironmentVariable("CEVIRMEN_SHOTS");
+            if (!string.IsNullOrEmpty(shots))
+            {
+                try { CaptureShots(shots); Environment.Exit(0); }
+                catch (Exception ex)
+                {
+                    try { File.WriteAllText(Path.Combine(shots, "error.txt"), ex.ToString()); } catch (Exception) { }
+                    Environment.Exit(1);
+                }
+                return;
+            }
+            if (!_host.Current.TanitimGoruldu) StartTour();
         };
-        _loading = false;
     }
 
     public void AllowExit() => _allowExit = true;
+
+    // ---------------- window chrome ----------------
+
+    private void BuildChrome()
+    {
+        foreach (var b in new[] { _help, _min, _max, _close }) Controls.Add(b);
+        _help.Click += (_, _) => StartTour();
+        _min.Click += (_, _) => WindowState = FormWindowState.Minimized;
+        _max.Click += (_, _) => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+        _close.Click += (_, _) => Close();
+    }
 
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
         try { Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE); }
         catch (Exception ex) { ErrorLog.Write(ex, "affinity-main"); }
+        Dwm.RoundCorners(Handle, small: false);
+        // Recalculate the frame now that WM_NCCALCSIZE removes the standard caption; the window is all client now.
+        NativeUi.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, NativeUi.SWP_FRAMECHANGED | Native.SWP_NOMOVE | Native.SWP_NOSIZE | NativeUi.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+        var work = Screen.FromHandle(Handle).WorkingArea;
+        MinimumSize = new Size(Math.Min(Theme.D(1060), work.Width), Math.Min(Theme.D(680), work.Height));
+        Size = new Size(Math.Min(Theme.D(1280), work.Width - Theme.D(16)), Math.Min(Theme.D(800), work.Height - Theme.D(16)));
+        // Last size and position from ayarlar.json, if that spot is still on a connected monitor.
+        var s = _host.Current;
+        var saved = new Rectangle(s.PencereX, s.PencereY, s.PencereGenislik, s.PencereYukseklik);
+        if (saved.Width > 0 && Screen.AllScreens.Any(sc => Rectangle.Intersect(sc.WorkingArea, saved) is { Width: > 200, Height: > 120 }))
+        {
+            StartPosition = FormStartPosition.Manual;
+            Bounds = saved;
+        }
+    }
+
+    private FormWindowState _windowStateSeen = FormWindowState.Normal;
+
+    /// <summary>Writes the window size, position, and maximized state to ayarlar.json.</summary>
+    private void SaveWindow()
+    {
+        if (_loading || !IsHandleCreated || WindowState == FormWindowState.Minimized) return;
+        var b = WindowState == FormWindowState.Maximized ? RestoreBounds : Bounds;
+        bool max = WindowState == FormWindowState.Maximized;
+        var s = _host.Current;
+        if (s.PencereX == b.X && s.PencereY == b.Y && s.PencereGenislik == b.Width && s.PencereYukseklik == b.Height && s.PencereBuyuk == max) return;
+        Patch(x => { x.PencereX = b.X; x.PencereY = b.Y; x.PencereGenislik = b.Width; x.PencereYukseklik = b.Height; x.PencereBuyuk = max; });
+    }
+
+    protected override void OnResizeEnd(EventArgs e)
+    {
+        base.OnResizeEnd(e);
+        SaveWindow();
+    }
+
+    /// <summary>ayarlar.json decides; the Run key follows it (and picks up a moved exe).</summary>
+    private void SyncAutoStart()
+    {
+        bool want = _host.Current.WindowsIleBaslat;
+        if (want || AutoStart.Enabled) AutoStart.Set(want);
+        _startupToggle.SetSilently(AutoStart.Enabled);
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        Arrange();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        SaveWindow();
         if (!_allowExit && e.CloseReason == CloseReason.UserClosing)
         {
             e.Cancel = true;
@@ -96,345 +199,516 @@ internal sealed class MainWindow : Form
         base.OnFormClosing(e);
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _tick.Dispose();
+        base.Dispose(disposing);
+    }
+
     protected override void WndProc(ref Message m)
     {
-        const int WM_NCHITTEST = 0x84;
-        const int HTCLIENT = 1;
+        const int WM_NCCALCSIZE = 0x0083, WM_NCHITTEST = 0x0084;
+        if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero)
+        {
+            // Client area = whole window. When maximized, Windows places the frame off-screen; trim it back.
+            if (NativeUi.IsZoomed(m.HWnd))
+            {
+                var p = Marshal.PtrToStructure<NativeUi.NCCALCSIZE_PARAMS>(m.LParam);
+                int dpi = DeviceDpi;
+                int fx = NativeUi.Frame(dpi, horizontal: true), fy = NativeUi.Frame(dpi, horizontal: false);
+                p.Rect0.Left += fx;
+                p.Rect0.Top += fy;
+                p.Rect0.Right -= fx;
+                p.Rect0.Bottom -= fy;
+                Marshal.StructureToPtr(p, m.LParam, false);
+            }
+            m.Result = IntPtr.Zero;
+            return;
+        }
         if (m.Msg == WM_NCHITTEST)
         {
-            base.WndProc(ref m);
-            if ((int)m.Result == HTCLIENT)
-            {
-                var p = PointToClient(Cursor.Position);
-                const int g = 6;
-                bool left = p.X <= g, right = p.X >= ClientSize.Width - g, top = p.Y <= g, bottom = p.Y >= ClientSize.Height - g;
-                int hit = (top, bottom, left, right) switch
-                {
-                    (true, _, true, _) => 13,
-                    (true, _, _, true) => 14,
-                    (_, true, true, _) => 16,
-                    (_, true, _, true) => 17,
-                    (true, _, _, _) => 12,
-                    (_, true, _, _) => 15,
-                    (_, _, true, _) => 10,
-                    (_, _, _, true) => 11,
-                    _ => HTCLIENT,
-                };
-                if (hit != HTCLIENT) m.Result = (IntPtr)hit;
-            }
+            int lp = unchecked((int)(long)m.LParam);
+            var pt = PointToClient(new Point((short)(lp & 0xFFFF), (short)((lp >> 16) & 0xFFFF)));
+            m.Result = (IntPtr)HitTest(pt);
             return;
         }
         base.WndProc(ref m);
     }
 
-    private Panel BuildTitle()
+    private int HitTest(Point p)
     {
-        var bar = new Panel { Height = 40, Dock = DockStyle.Top, BackColor = UiTheme.Bg };
-        var title = new Label { Text = "Altyazı Çevirici", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(12, 0, 0, 0), Font = UiTheme.Font(11f, FontStyle.Bold), ForeColor = UiTheme.Text };
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Right, Width = 132, FlowDirection = FlowDirection.RightToLeft, WrapContents = false, BackColor = UiTheme.Bg };
-        buttons.Controls.Add(CaptionButton("✕", Close));
-        buttons.Controls.Add(CaptionButton("▢", () => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized));
-        buttons.Controls.Add(CaptionButton("—", () => WindowState = FormWindowState.Minimized));
-        bar.Controls.Add(title);
-        bar.Controls.Add(buttons);
-        return bar;
-    }
-
-    private static FlatButton CaptionButton(string text, Action click)
-    {
-        var b = new FlatButton { Text = text, Width = 40, Height = 28, Margin = new Padding(2) };
-        b.Click += (_, _) => click();
-        return b;
-    }
-
-    private Panel BuildSourceRow()
-    {
-        var row = new Panel { Height = 92, Dock = DockStyle.Bottom, BackColor = UiTheme.Bg, Padding = new Padding(8, 0, 8, 4) };
-        _sources.BackColor = UiTheme.Bg;
-        _sources.Dock = DockStyle.Top;
-        var tools = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 46, WrapContents = false, BackColor = UiTheme.Bg };
-        var fallback = new FlatButton { Text = "Tam ekran seçici", Width = 160 };
-        fallback.Click += (_, _) => _host.SelectRegion();
-        var windows = new FlatButton { Text = "Pencere seç", Width = 130 };
-        windows.Click += (_, _) => PickWindow();
-        tools.Controls.Add(_start);
-        tools.Controls.Add(fallback);
-        tools.Controls.Add(windows);
-        row.Controls.Add(tools);
-        row.Controls.Add(_sources);
-        return row;
-    }
-
-    private Panel BuildUpdateBanner()
-    {
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Right, Width = 430, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
-        var update = new FlatButton { Text = "Güncelle", Width = 100, Primary = true };
-        var later = new FlatButton { Text = "Daha sonra", Width = 110 };
-        var skip = new FlatButton { Text = "Bu sürümü atla", Width = 140 };
-        update.Click += (_, _) => _ = InstallAsync();
-        later.Click += (_, _) => _banner.Visible = false;
-        skip.Click += (_, _) => { if (_offer != null) _host.SkipRelease(_offer.Tag); _banner.Visible = false; };
-        _progress.Margin = new Padding(8, 10, 8, 0);
-        buttons.Controls.Add(skip);
-        buttons.Controls.Add(later);
-        buttons.Controls.Add(update);
-        buttons.Controls.Add(_progress);
-        _banner.BackColor = Color.FromArgb(28, 48, 44);
-        _banner.Controls.Add(_bannerText);
-        _banner.Controls.Add(buttons);
-        return _banner;
-    }
-
-    private Panel BuildOcrBanner()
-    {
-        var kur = new FlatButton { Text = "Kur", Width = 80, Primary = true };
-        kur.Click += (_, _) => _ = KurOcrAsync(kur);
-        var buttons = new FlowLayoutPanel { Dock = DockStyle.Right, Width = 100, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
-        buttons.Controls.Add(kur);
-        _ocrBanner.BackColor = Color.FromArgb(64, 42, 28);
-        _ocrBanner.Controls.Add(_ocrText);
-        _ocrBanner.Controls.Add(buttons);
-        return _ocrBanner;
-    }
-
-    private void BuildPages()
-    {
-        var seg = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, WrapContents = false, BackColor = UiTheme.Bg };
-        foreach (var name in new[] { "Çeviri", "Görünüm", "Sözlük", "Kısayollar" })
+        const int HTCLIENT = 1, HTCAPTION = 2, HTLEFT = 10, HTRIGHT = 11, HTTOP = 12, HTTOPLEFT = 13, HTTOPRIGHT = 14, HTBOTTOM = 15, HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
+        if (WindowState != FormWindowState.Maximized)
         {
-            int index = _segments.Count;
-            var b = new FlatButton { Text = name, Width = 120 };
-            b.Click += (_, _) => ShowPage(index);
-            _segments.Add(b);
-            seg.Controls.Add(b);
+            int g = Theme.D(6);
+            bool l = p.X < g, r = p.X >= ClientSize.Width - g, t = p.Y < g, b = p.Y >= ClientSize.Height - g;
+            if (t && l) return HTTOPLEFT;
+            if (t && r) return HTTOPRIGHT;
+            if (b && l) return HTBOTTOMLEFT;
+            if (b && r) return HTBOTTOMRIGHT;
+            if (l) return HTLEFT;
+            if (r) return HTRIGHT;
+            if (t) return HTTOP;
+            if (b) return HTBOTTOM;
         }
-        _pages.BackColor = UiTheme.Bg;
-        _pages.Controls.Add(seg);
-        ShowPage(0);
+        return p.Y < Theme.D(40) ? HTCAPTION : HTCLIENT;
     }
 
-    private void ShowPage(int index)
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
-        _page = index;
-        for (int i = 0; i < _segments.Count; i++) _segments[i].Primary = i == index;
-        for (int i = _pages.Controls.Count - 1; i >= 0; i--)
+        base.OnDpiChanged(e);
+        Theme.SetScale(e.DeviceDpiNew / 96f);
+        Font = Theme.Body;
+        MinimumSize = new Size(Theme.D(1060), Theme.D(680));
+        Bounds = e.SuggestedRectangle;
+        ApplyFonts();
+        Arrange();
+        Invalidate(true);
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        _max.Glyph = WindowState == FormWindowState.Maximized ? Ic.Restore : Ic.Max;
+        _max.Invalidate();
+        if (!_loading) Arrange();
+        if (WindowState != _windowStateSeen)
         {
-            if (_pages.Controls[i] is FlowLayoutPanel) continue;
-            _pages.Controls.RemoveAt(i);
+            _windowStateSeen = WindowState;
+            SaveWindow();
         }
-        var body = index switch
-        {
-            1 => LookPage(),
-            2 => GlossaryPage(),
-            3 => HotkeyPage(),
-            _ => TranslatePage(),
-        };
-        body.Dock = DockStyle.Fill;
-        _pages.Controls.Add(body);
-        body.BringToFront();
     }
 
-    private FlowLayoutPanel TranslatePage()
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        var flow = Column();
-        flow.Controls.Add(Note("Küfürler her zaman sansürsüz çevrilir. Altyazı dili ve çeviri dili:"));
-        var src = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Width = 700 };
-        foreach (var (code, name) in new[] { ("en", "İngilizce"), ("de", "Almanca"), ("fr", "Fransızca"), ("es", "İspanyolca"), ("tr", "Türkçe") })
+        if (e.Control && e.KeyCode is >= Keys.D1 and <= Keys.D4) { ShowNav(e.KeyCode - Keys.D1); e.Handled = true; }
+        base.OnKeyDown(e);
+    }
+
+    // ---------------- layout ----------------
+
+    private void Arrange()
+    {
+        if (ClientSize.Width < 50 || ClientSize.Height < 50) return;
+        int W = ClientSize.Width, H = ClientSize.Height;
+        int cap = Theme.D(46), top = Theme.D(40);
+        _close.SetBounds(W - cap, 0, cap, top);
+        _max.SetBounds(W - 2 * cap, 0, cap, top);
+        _min.SetBounds(W - 3 * cap, 0, cap, top);
+        _help.SetBounds(W - 4 * cap, 0, cap, top);
+        _titleRect = new Rectangle(0, 0, W - 4 * cap, top);
+        _tour.Bounds = ClientRectangle;
+        if (_tour.Running) _tour.BringToFront();
+
+        // Sidebar
+        int nx = Theme.D(12), nw = Theme.D(188) - Theme.D(22);
+        int ny = top + Theme.D(4) + Theme.D(4) + Theme.D(38) + Theme.D(16);
+        foreach (var n in _nav)
         {
-            var b = new FlatButton { Text = name, Width = 110, Tag = code };
-            b.Primary = _host.Current.KaynakDil.StartsWith(code, StringComparison.OrdinalIgnoreCase);
-            b.Click += (_, _) => Patch(s => s.KaynakDil = code);
-            src.Controls.Add(b);
+            n.SetBounds(nx, ny, nw, Theme.D(40));
+            ny += Theme.D(42);
         }
-        flow.Controls.Add(src);
-        flow.Controls.Add(ToggleRow("Büyük harfli isimleri koru", _host.Current.OzelIsimleriKoru, v => Patch(s => s.OzelIsimleriKoru = v)));
-        flow.Controls.Add(ToggleRow("Beyaz yazı filtresi", _host.Current.BeyazYaziFiltresi, v => Patch(s => s.BeyazYaziFiltresi = v)));
-        return flow;
-    }
+        int statusH = StatusHeight();
+        var status = new Rectangle(nx, H - Theme.D(14) - statusH, nw, statusH);
+        _statusCard.Place(status);
+        int pad = Theme.D(14);
+        _run.SetBounds(UiCard.Pad + pad, UiCard.Pad + statusH - pad - Theme.D(44), nw - 2 * pad, Theme.D(44));
 
-    private FlowLayoutPanel LookPage()
-    {
-        var flow = Column();
-        _size = Slider(10, 72, (int)_host.Current.YaziBoyutu, out _sizeValue);
-        _opacity = Slider(0, 100, _host.Current.ArkaPlanOpakligi, out _opacityValue);
-        _outline = Slider(0, 12, _host.Current.DisCizgi, out _outlineValue);
-        _size.ValueChanged += (_, _) => { _sizeValue!.Text = _size.Value.ToString(System.Globalization.CultureInfo.InvariantCulture); Patch(s => s.YaziBoyutu = _size.Value); _host.ShowPreview(); };
-        _opacity.ValueChanged += (_, _) => { _opacityValue!.Text = "%" + _opacity.Value.ToString(System.Globalization.CultureInfo.InvariantCulture); Patch(s => s.ArkaPlanOpakligi = _opacity.Value); _host.ShowPreview(); };
-        _outline.ValueChanged += (_, _) => { _outlineValue!.Text = _outline.Value.ToString(System.Globalization.CultureInfo.InvariantCulture); Patch(s => s.DisCizgi = _outline.Value); _host.ShowPreview(); };
-        flow.Controls.Add(Labeled("Yazı boyutu", _size, _sizeValue));
-        flow.Controls.Add(Labeled("Arka plan", _opacity, _opacityValue));
-        flow.Controls.Add(Labeled("Dış çizgi", _outline, _outlineValue));
-        var colors = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        foreach (var (name, hex) in new[] { ("Beyaz", "#FFFFFF"), ("Sarı", "#FFE14D"), ("Turkuaz", "#3ED6B0") })
+        // Inspector
+        int iw = Theme.D(308) - Theme.D(14);
+        var insp = new Rectangle(W - Theme.D(14) - iw, top + Theme.D(4), iw, H - top - Theme.D(4) - Theme.D(16));
+        _inspector.Place(insp);
+        int ip = Theme.D(18);
+        _scroll.SetBounds(UiCard.Pad + ip, UiCard.Pad + ip, insp.Width - ip - Theme.D(8), insp.Height - 2 * ip);
+
+        // Center column
+        int cx = Theme.D(188) + Theme.D(6);
+        int cr = insp.X - Theme.D(16);
+        int cw = cr - cx;
+        int y = top + Theme.D(4);
+        int headerH = Theme.D(52);
+        _headerRect = new Rectangle(cx + Theme.D(4), y, cw - Theme.D(8), headerH);
+        int chipH = Theme.D(30) + 2 * Theme.D(3);
+        int chipX = cr - Theme.D(4) + Theme.D(3);
+        foreach (var chip in new[] { _chipTrans, _chipOrig })
         {
-            var b = new FlatButton { Text = name, Width = 90 };
-            b.Click += (_, _) => { Patch(s => s.YaziRengi = hex); _host.ShowPreview(); };
-            colors.Controls.Add(b);
+            int w = chip.PreferredWidth;
+            chipX -= w;
+            chip.SetBounds(chipX, y + (headerH - chipH) / 2, w, chipH);
+            chipX -= Theme.D(8) - 2 * Theme.D(3);
         }
-        flow.Controls.Add(colors);
-        flow.Controls.Add(Note("Örnek cümle hem tuvalde hem oyunun üstündeki kutuda anında değişir."));
-        return flow;
+        y += headerH + Theme.D(12);
+
+        int sourceH = Theme.D(54);
+        int lastMin = Theme.D(76);
+        int gap = Theme.D(12);
+        int bottom = H - Theme.D(16);
+        int previewH = (cw - Theme.D(16)) * 9 / 16 + Theme.D(16);
+        previewH = Math.Min(previewH, bottom - y - sourceH - lastMin - 2 * gap);
+        previewH = Math.Max(previewH, Theme.D(160));
+        _previewCard.Place(new Rectangle(cx, y, cw, previewH));
+        _stage.SetBounds(UiCard.Pad + Theme.D(8), UiCard.Pad + Theme.D(8), cw - Theme.D(16), previewH - Theme.D(16));
+        y += previewH + gap;
+
+        _sourceCard.Place(new Rectangle(cx, y, cw, sourceH));
+        ArrangeSource(cw, sourceH);
+        y += sourceH + gap;
+        _lastCard.Place(new Rectangle(cx, y, cw, Math.Max(lastMin, bottom - y)));
+
+        _scroll.Relayout();
+        Invalidate();
     }
 
-    private FlowLayoutPanel GlossaryPage()
+    private int StatusHeight() => Theme.D(14 + 20 + 12 + 18 + 12 + 44 + 14) + (StatusWarning() != null ? Theme.D(44) : 0);
+
+    private void ApplyFonts()
     {
-        var flow = Column();
-        var toggles = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(860, 0) };
-        _packs.Clear();
-        IEnumerable<string> packIds = _host.Current.AcikPaketler == null ? SozlukKutuphanesi.VarsayilanAcik : _host.Current.AcikPaketler;
-        var open = new HashSet<string>(packIds, StringComparer.OrdinalIgnoreCase);
-        foreach (var paket in SozlukKutuphanesi.Paketler())
+        foreach (var input in AllInputs()) input.ApplyFont();
+        _run.Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.Clear(Theme.Bg);
+        Theme.HighQuality(g);
+        // Title bar
+        int top = Theme.D(40);
+        Mascot.Draw(g, new RectangleF(Theme.D(14), (top - Theme.D(20)) / 2f, Theme.D(20), Theme.D(20)));
+        Theme.Text(g, Text, Theme.Title, new Rectangle(Theme.D(44), 0, Math.Max(10, _titleRect.Width - Theme.D(44)), top), Theme.Tx2);
+        // Brand
+        int bx = Theme.D(18), by = top + Theme.D(8);
+        Mascot.Draw(g, new RectangleF(bx, by, Theme.D(38), Theme.D(38)));
+        int tx = bx + Theme.D(48);
+        Theme.Text(g, AppInfo.DisplayName, Theme.Brand, new Rectangle(tx, by + Theme.D(2), Theme.D(188) - tx, Theme.D(20)), Theme.Tx);
+        Theme.Text(g, OcrDilPaketi.DilAdi(_host.Current.KaynakDil) + " → Türkçe", Theme.Small, new Rectangle(tx, by + Theme.D(21), Theme.D(188) - tx, Theme.D(16)), Theme.Tx2);
+        // Center header
+        var h = _headerRect;
+        int chipsLeft = Math.Min(_chipOrig.Left, _chipTrans.Left);
+        int textW = Math.Max(10, chipsLeft - h.X - Theme.D(12));
+        Theme.Text(g, "Canlı önizleme", Theme.H1, new Rectangle(h.X, h.Y + Theme.D(2), textW, Theme.D(28)), Theme.Tx);
+        Theme.Text(g, "Kutuları sürükleyip yerleştir, yerini bulunca kilitle.", Theme.Body, new Rectangle(h.X, h.Y + Theme.D(31), textW, Theme.D(19)), Theme.Tx2);
+    }
+
+    // ---------------- sidebar ----------------
+
+    private void BuildSidebar()
+    {
+        for (int i = 0; i < _nav.Length; i++)
         {
-            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 16, 4) };
-            var toggle = new ToggleSwitch { On = open.Contains(paket.Id) };
-            var id = paket.Id;
-            toggle.CheckedChanged += (_, _) =>
-            {
-                if (_loading) return;
-                Patch(s =>
-                {
-                    s.AcikPaketler ??= new List<string>();
-                    if (toggle.On) { if (!s.AcikPaketler.Contains(id)) s.AcikPaketler.Add(id); }
-                    else s.AcikPaketler.RemoveAll(x => x.Equals(id, StringComparison.OrdinalIgnoreCase));
-                });
-                FillGlossary();
-            };
-            _packs.Add((id, toggle));
-            row.Controls.Add(toggle);
-            row.Controls.Add(new Label { Text = paket.Ad, AutoSize = true, Margin = new Padding(6, 4, 0, 0), ForeColor = UiTheme.Text });
-            toggles.Controls.Add(row);
+            int index = i;
+            _nav[i].Click += (_, _) => ShowNav(index);
+            Controls.Add(_nav[i]);
         }
-        flow.Controls.Add(toggles);
-        _search = new TextBox { Width = 220, BackColor = UiTheme.Card, ForeColor = UiTheme.Text, BorderStyle = BorderStyle.FixedSingle };
-        _search.TextChanged += (_, _) => FillGlossary();
-        var add = new FlatButton { Text = "Ekle", Width = 70 };
-        var del = new FlatButton { Text = "Sil", Width = 70 };
-        var export = new FlatButton { Text = "Dışa aktar", Width = 110 };
-        var import = new FlatButton { Text = "İçe aktar", Width = 110 };
-        add.Click += (_, _) => AddEntry();
-        del.Click += (_, _) => DeleteEntry();
-        export.Click += (_, _) => ExportEntries();
-        import.Click += (_, _) => ImportEntries();
-        var tools = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        tools.Controls.Add(_search);
-        tools.Controls.Add(add);
-        tools.Controls.Add(del);
-        tools.Controls.Add(export);
-        tools.Controls.Add(import);
-        flow.Controls.Add(tools);
-        _glossary = new ListBox { Height = 90, Width = 820, BackColor = UiTheme.Card, ForeColor = UiTheme.Text, BorderStyle = BorderStyle.None };
-        flow.Controls.Add(_glossary);
-        FillGlossary();
-        return flow;
+        _statusCard.Controls.Add(_run);
+        _statusCard.PaintBody += PaintStatus;
+        _statusCard.MouseClick += (_, e) => { if (_warnHit.Contains(e.Location)) ShowNav(3); };
+        _statusCard.MouseMove += (_, e) => _statusCard.Cursor = _warnHit.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
+        _run.Click += (_, _) => ToggleRun();
+        Controls.Add(_statusCard);
     }
 
-    private FlowLayoutPanel HotkeyPage()
+    private void ShowNav(int index)
     {
-        var flow = Column();
-        flow.Controls.Add(Note("F8 bölge (tam ekran yedek)   F9 duraklat   F10 çıkış. Pencereyi kapatmak tepsiye küçültür."));
-        _autoUpdate = new CheckBox { Text = "Açılışta güncellemeleri denetle", AutoSize = true, ForeColor = UiTheme.Text, Checked = _host.Current.AcilistaGuncellemeDenetle };
-        _autoUpdate.CheckedChanged += (_, _) => { if (!_loading && _autoUpdate != null) Patch(s => s.AcilistaGuncellemeDenetle = _autoUpdate.Checked); };
-        flow.Controls.Add(_autoUpdate);
-        var check = new FlatButton { Text = "Güncellemeleri denetle", Width = 200 };
-        check.Click += (_, _) => _ = CheckUpdatesAsync(true);
-        flow.Controls.Add(check);
-        flow.Controls.Add(Note("Sürüm " + SurumKarsilastirma.Tag(GuncellemeIstegi.UygulamaSurumu) + ". Yazı tanıma paketi eksikse üstteki Kur düğmesi yönetici izni ister."));
-        return flow;
+        index = Math.Clamp(index, 0, _nav.Length - 1);
+        _navIndex = index;
+        for (int i = 0; i < _nav.Length; i++) _nav[i].Active = i == index;
+        var page = index switch { 1 => _lookPage, 2 => _glossaryPage, 3 => _advancedPage, _ => _areasPage };
+        if (index == 1) SelectBox(PreviewStage.Trans);
+        if (index == 2) { HazirKutuphane.Yukle(); FillGlossary(); }
+        _scroll.Show(page);
+        _scroll.Relayout();
+        if (_host.Current.SonSayfa != index) Patch(s => s.SonSayfa = index);
     }
 
-    private void LoadFromHost()
+    private string? StatusWarning()
     {
-        _sync = true;
-        var s = _host.Current;
-        _screen = MonitorBounds(s);
-        RebuildSources();
-        var ocr = s.HasRegion ? new Rectangle(s.RegionX, s.RegionY, s.RegionWidth, s.RegionHeight) : Rectangle.Empty;
-        var cap = CaptionRect(s, ocr);
-        _preview.SetRegions(ocr, cap, s, true);
-        _sync = false;
-        RefreshStatus();
+        if (_host.IsRunning) return null;
+        if (_host.OcrPaketiEksik) return "OCR paketi eksik";
+        if (_offer != null) return "Yeni sürüm: " + _offer.Tag;
+        return null;
     }
 
-    private void RebuildSources()
+    private void PaintStatus(Graphics g, Rectangle b)
     {
-        _sources.Controls.Clear();
-        _sources.Controls.Add(new Label { Text = "Kaynak", AutoSize = true, Margin = new Padding(0, 8, 8, 0), ForeColor = UiTheme.Muted });
-        int n = 1;
-        foreach (var screen in Screen.AllScreens)
+        int pad = Theme.D(14);
+        int x = b.X + pad, w = b.Width - 2 * pad, y = b.Y + pad;
+        bool running = _host.IsRunning, paused = _host.IsPaused;
+        Color dot = running ? (paused ? Theme.KeyOrig : Theme.OkDot) : _host.OcrPaketiEksik ? Theme.Warn : Theme.Neutral;
+        float d = Theme.D(8);
+        float cy = y + Theme.D(10);
+        if (running && !paused)
         {
-            var bounds = screen.Bounds;
-            var b = new FlatButton { Text = "Ekran " + n + (screen.Primary ? " · ana" : ""), Width = 130, Primary = bounds == _screen && _window == IntPtr.Zero };
-            b.Click += (_, _) => { _window = IntPtr.Zero; _screen = bounds; Patch(s => s.MonitorAdi = screen.DeviceName); RebuildSources(); Grab(); };
-            _sources.Controls.Add(b);
+            using var halo = new SolidBrush(Color.FromArgb(46, 22, 163, 74));
+            float hd = Theme.D(16);
+            g.FillEllipse(halo, x + d / 2 - hd / 2, cy - hd / 2, hd, hd);
+        }
+        using (var bd = new SolidBrush(dot)) g.FillEllipse(bd, x, cy - d / 2, d, d);
+        string status = running ? (paused ? "Duraklatıldı" : "Çalışıyor") : "Hazır";
+        Theme.Text(g, status, Theme.BodySemi, new Rectangle(x + Theme.D(17), y, w - Theme.D(17), Theme.D(20)), Theme.Tx);
+        y += Theme.D(32);
+        Theme.Text(g, "Gecikme", Theme.Small, new Rectangle(x, y, w, Theme.D(18)), Theme.Tx2);
+        Theme.Text(g, Latency(), Theme.SmallSemi, new Rectangle(x, y, w, Theme.D(18)), Theme.Tx, Theme.Right);
+        y += Theme.D(30);
+        var warn = StatusWarning();
+        _warnHit = Rectangle.Empty;
+        if (warn != null)
+        {
+            var r = new Rectangle(x, y, w, Theme.D(34));
+            bool update = !_host.OcrPaketiEksik;
+            Theme.FillRound(g, r, Theme.D(8), update ? Theme.AccT : Theme.WarnT);
+            Theme.Glyph(g, update ? Ic.Download : Ic.Warning, Theme.Icon12, new Rectangle(r.X + Theme.D(8), r.Y, Theme.D(16), r.Height), update ? Theme.AccD : Theme.Warn);
+            Theme.Text(g, warn, Theme.Caption, new Rectangle(r.X + Theme.D(30), r.Y, r.Width - Theme.D(36), r.Height), update ? Theme.AccInk : Theme.Warn);
+            _warnHit = r;
+        }
+    }
+
+    private string Latency() => _host.SonGecikmeMs > 0 && _host.IsRunning
+        ? _host.SonGecikmeMs.ToString(CultureInfo.InvariantCulture) + " ms" : "—";
+
+    private void ToggleRun()
+    {
+        if (_host.IsRunning) { _host.StopCapture(); return; }
+        if (_host.OcrPaketiEksik) { ShowNav(3); return; }
+        if (!_host.Current.HasRegion) SaveRegions(showOverlay: false);
+        _host.StartCapture();
+    }
+
+    // ---------------- center ----------------
+
+    private void BuildCenter()
+    {
+        _chipOrig.SelectClicked += (_, _) => SelectBox(PreviewStage.Orig);
+        _chipTrans.SelectClicked += (_, _) => SelectBox(PreviewStage.Trans);
+        _chipOrig.LockClicked += (_, _) => ToggleLock(PreviewStage.Orig);
+        _chipTrans.LockClicked += (_, _) => ToggleLock(PreviewStage.Trans);
+        Controls.Add(_chipOrig);
+        Controls.Add(_chipTrans);
+
+        _previewCard.Controls.Add(_stage);
+        _stage.SelectionChanged += (_, _) => SyncSelection();
+        _stage.BoxesChanged += (_, _) => RefreshGeometryFields();
+        _stage.BoxesCommitted += (_, _) => SaveRegions(showOverlay: true);
+        Controls.Add(_previewCard);
+
+        _sourceCard.Controls.Add(_sourceDrop);
+        _sourceCard.Controls.Add(_monitorDrop);
+        _sourceCard.Controls.Add(_refresh);
+        _sourceCard.PaintBody += PaintSource;
+        _sourceDrop.Opening += (_, _) => FillSources();
+        _sourceDrop.SelectedChanged += (_, _) => OnSourcePicked();
+        _monitorDrop.Opening += (_, _) => FillMonitors();
+        _monitorDrop.SelectedChanged += (_, _) => OnMonitorPicked();
+        _refresh.Click += (_, _) => { FillSources(); FillMonitors(); Grab(); };
+        Controls.Add(_sourceCard);
+
+        _lastCard.PaintBody += PaintLast;
+        Controls.Add(_lastCard);
+    }
+
+    private int _labelSource, _labelMonitor;
+
+    private void ArrangeSource(int cw, int h)
+    {
+        int pad = Theme.D(14), x = UiCard.Pad + pad, cy = UiCard.Pad + h / 2;
+        int dh = Theme.D(34);
+        int refresh = Theme.D(34);
+        int badgeW = Badge.Measure("Görüntü alınıyor", Ic.Check).Width;
+        int avail = cw - 2 * pad - refresh - badgeW - Theme.D(16) - Theme.D(10);
+        _labelSource = Theme.Measure("Kaynak", Theme.SmallSemi).Width;
+        _labelMonitor = Theme.Measure("Monitör", Theme.SmallSemi).Width;
+        int labels = _labelSource + _labelMonitor + Theme.D(8) * 2 + Theme.D(16);
+        int drops = Math.Max(Theme.D(200), avail - labels);
+        int mw = Math.Min(Theme.D(200), drops * 45 / 100), sw = Math.Min(Theme.D(250), drops - mw);
+        x += _labelSource + Theme.D(8);
+        _sourceDrop.SetBounds(x, cy - dh / 2, sw, dh);
+        x += sw + Theme.D(16) + _labelMonitor + Theme.D(8);
+        _monitorDrop.SetBounds(x, cy - dh / 2, mw, dh);
+        _refresh.SetBounds(UiCard.Pad + cw - pad - refresh, cy - refresh / 2, refresh, refresh);
+    }
+
+    private void PaintSource(Graphics g, Rectangle b)
+    {
+        int pad = Theme.D(14);
+        Theme.Text(g, "Kaynak", Theme.SmallSemi, new Rectangle(b.X + pad, b.Y, _labelSource + 2, b.Height), Theme.Tx2);
+        int mx = _sourceDrop.Right + Theme.D(16);
+        Theme.Text(g, "Monitör", Theme.SmallSemi, new Rectangle(mx, b.Y, _labelMonitor + 2, b.Height), Theme.Tx2);
+        bool ok = _stage.HasFrame && DateTime.UtcNow - _lastFrame < TimeSpan.FromSeconds(3);
+        string text = ok ? "Görüntü alınıyor" : "Görüntü yok";
+        var size = Badge.Measure(text, ok ? Ic.Check : Ic.Warning);
+        var r = new Rectangle(_refresh.Left - Theme.D(10) - size.Width, b.Y + (b.Height - size.Height) / 2, size.Width, size.Height);
+        if (r.X > _monitorDrop.Right + Theme.D(8)) Badge.Draw(g, r, text, ok ? BadgeKind.Ok : BadgeKind.Warn, ok ? Ic.Check : Ic.Warning);
+    }
+
+    private void PaintLast(Graphics g, Rectangle b)
+    {
+        int pad = Theme.D(16);
+        int tile = Theme.D(36);
+        int cy = b.Y + b.Height / 2;
+        var t = new Rectangle(b.X + pad, cy - tile / 2, tile, tile);
+        Theme.FillRound(g, t, Theme.D(10), Theme.AccT);
+        Theme.Glyph(g, Ic.Bolt, Theme.Icon16, t, Theme.AccD);
+        string ms = Latency();
+        var bs = Badge.Measure(ms, null);
+        var br = new Rectangle(b.Right - pad - bs.Width, cy - bs.Height / 2, bs.Width, bs.Height);
+        Badge.Draw(g, br, ms, BadgeKind.Neutral);
+        int x = t.Right + Theme.D(14);
+        int w = br.X - Theme.D(12) - x;
+        bool has = !string.IsNullOrWhiteSpace(_host.SonMetin);
+        string line = has ? _host.SonMetin : _host.IsRunning ? "Altyazı bekleniyor…" : "Henüz çeviri yok";
+        string sub = _host.IsRunning
+            ? (_host.IsPaused ? "Duraklatıldı · devam için F9" : "Ekrandaki altyazı okunuyor")
+            : "Başlat'a bastığında son çeviri burada görünür";
+        Theme.Text(g, "Son çeviri", Theme.Small, new Rectangle(x, cy - Theme.D(30), w, Theme.D(16)), Theme.Tx2);
+        Theme.Text(g, line, Theme.Big, new Rectangle(x, cy - Theme.D(13), w, Theme.D(24)), has ? Theme.Tx : Theme.Tx3);
+        Theme.Text(g, sub, Theme.Small, new Rectangle(x, cy + Theme.D(12), w, Theme.D(16)), Theme.Tx2);
+    }
+
+    // ---------------- sources ----------------
+
+    private void FillMonitors()
+    {
+        var items = new List<(string, object?)>();
+        int selected = 0, n = 1;
+        foreach (var s in Screen.AllScreens)
+        {
+            items.Add(("Monitör " + n.ToString(CultureInfo.InvariantCulture) + " · " + s.Bounds.Width.ToString(CultureInfo.InvariantCulture) + "×" + s.Bounds.Height.ToString(CultureInfo.InvariantCulture), s.DeviceName));
+            if (string.Equals(s.DeviceName, _host.Current.MonitorAdi, StringComparison.OrdinalIgnoreCase)
+                || (string.IsNullOrEmpty(_host.Current.MonitorAdi) && s.Bounds.Contains(Center(_screen))))
+                selected = n - 1;
             n++;
         }
+        _monitorDrop.SetItems(items, selected);
     }
 
-    private void SaveRegions()
+    private void FillSources()
     {
-        if (_sync || _loading) return;
-        var s = _host.Current.Clone();
-        var ocr = _preview.OcrRegion;
-        s.RegionX = ocr.X;
-        s.RegionY = ocr.Y;
-        s.RegionWidth = ocr.Width;
-        s.RegionHeight = ocr.Height;
-        var cap = _preview.CaptionRegion;
-        if (cap.Width >= 20)
+        var items = new List<(string, object?)> { ("Tüm ekran", IntPtr.Zero) };
+        int selected = 0;
+        foreach (var w in NativeUi.Windows())
         {
-            var region = new EkranDikdortgen(ocr.X, ocr.Y, ocr.Width, ocr.Height);
-            SubtitleLayout.Remember(s, new EkranDikdortgen(cap.X, cap.Y, cap.Width, cap.Height), region, follow: false);
-            s.KutuYukseklik = cap.Height;
-            s.KonumAyarlandi = true;
+            items.Add((w.Title, w.Handle));
+            if (w.Handle == _window) selected = items.Count - 1;
         }
-        _host.Apply(s, true);
-        _host.ShowPreview();
+        _sourceDrop.SetItems(items, selected);
+    }
+
+    private void OnSourcePicked()
+    {
+        if (_sourceDrop.SelectedTag is IntPtr h && h != IntPtr.Zero && NativeUi.TryWindowRect(h, out var rect))
+        {
+            _window = h;
+            _windowTitle = _sourceDrop.SelectedText;
+            _screen = rect;
+        }
+        else
+        {
+            _window = IntPtr.Zero;
+            _windowTitle = "";
+            _screen = MonitorBounds(_host.Current);
+        }
+        string choice = _window != IntPtr.Zero ? _windowTitle : "ekran";
+        Patch(s => s.KaynakPencere = choice);
+        _stage.SetSource(_screen);
+        RefreshGeometryFields();
+        Grab();
+    }
+
+    private void OnMonitorPicked()
+    {
+        if (_monitorDrop.SelectedTag is not string device) return;
+        var screen = Screen.AllScreens.FirstOrDefault(s => s.DeviceName == device);
+        if (screen == null) return;
+        Patch(s => { s.MonitorAdi = device; s.KaynakPencere = "ekran"; });
+        _window = IntPtr.Zero;
+        _windowTitle = "";
+        _screen = screen.Bounds;
+        _sourceDrop.SelectSilently(0);
+        _stage.SetSource(_screen);
+        // Boxes from another monitor would be off-canvas: bring them onto this one.
+        for (int i = 0; i < 2; i++)
+        {
+            var b = _stage.Box(i);
+            if (!b.IsEmpty && !_screen.IntersectsWith(b))
+                _stage.SetBox(i, Fit(new Rectangle(_screen.X + b.X - Screen.FromRectangle(b).Bounds.X, _screen.Y + b.Y - Screen.FromRectangle(b).Bounds.Y, b.Width, b.Height), _screen, i));
+        }
+        SaveRegions(showOverlay: false);
+        RefreshGeometryFields();
+        Grab();
+    }
+
+    private static Point Center(Rectangle r) => new(r.X + r.Width / 2, r.Y + r.Height / 2);
+
+    private int _sourceProbe;
+
+    /// <summary>The window saved in ayarlar.json (exact title first, then partial); if none was chosen, Remote Play or Chiaki.</summary>
+    private (IntPtr Handle, string Title, Rectangle Bounds)? FindSourceWindow()
+    {
+        string saved = _host.Current.KaynakPencere;
+        var windows = NativeUi.Windows();
+        (IntPtr Handle, string Title) pick;
+        if (saved.Length == 0)
+            pick = windows.FirstOrDefault(w => w.Title.Contains("PS Remote Play", StringComparison.OrdinalIgnoreCase) || w.Title.Contains("Chiaki", StringComparison.OrdinalIgnoreCase));
+        else
+        {
+            pick = windows.FirstOrDefault(w => w.Title.Equals(saved, StringComparison.OrdinalIgnoreCase));
+            if (pick.Handle == IntPtr.Zero)
+                pick = windows.FirstOrDefault(w => w.Title.Contains(saved, StringComparison.OrdinalIgnoreCase) || saved.Contains(w.Title, StringComparison.OrdinalIgnoreCase));
+        }
+        if (pick.Handle == IntPtr.Zero || !NativeUi.TryWindowRect(pick.Handle, out var rect)) return null;
+        return (pick.Handle, pick.Title, rect);
     }
 
     private void Grab()
     {
-        if (!Visible || _screen.Width < 20 || _screen.Height < 20) return;
+        if (!Visible || WindowState == FormWindowState.Minimized) return;
+        // The saved source window may open after us (Remote Play started later): pick it up when it appears.
+        if (_window == IntPtr.Zero && _host.Current.KaynakPencere != "ekran" && ++_sourceProbe % 5 == 0 && FindSourceWindow() is { } found)
+        {
+            _window = found.Handle;
+            _windowTitle = found.Title;
+            _screen = found.Bounds;
+            FillSources();
+            _stage.SetSource(_screen);
+            RefreshGeometryFields();
+        }
+        if (_window != IntPtr.Zero)
+        {
+            if (NativeUi.TryWindowRect(_window, out var rect))
+            {
+                if (rect != _screen) { _screen = rect; _stage.SetSource(rect); RefreshGeometryFields(); }
+            }
+            else
+            {
+                _window = IntPtr.Zero;
+                _windowTitle = "";
+                _screen = MonitorBounds(_host.Current);
+                _sourceDrop.SelectSilently(0);
+                _stage.SetSource(_screen);
+            }
+        }
+        if (_screen.Width < 20 || _screen.Height < 20) return;
         try
         {
-            int maxW = 1280;
-            int w = Math.Min(maxW, _screen.Width);
+            int target = Math.Clamp(_stage.Width, 320, 1600);
+            int w = Math.Min(target, _screen.Width);
             int h = Math.Max(1, _screen.Height * w / _screen.Width);
             using var full = new Bitmap(_screen.Width, _screen.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             using (var g = Graphics.FromImage(full))
                 g.CopyFromScreen(_screen.X, _screen.Y, 0, 0, _screen.Size);
-            var small = new Bitmap(w, h);
+            var small = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             using (var g = Graphics.FromImage(small))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
                 g.DrawImage(full, new Rectangle(0, 0, w, h));
-            _preview.SetFrame(small, _screen);
+            }
+            _stage.SetFrame(small, _screen);
+            _lastFrame = DateTime.UtcNow;
         }
-        catch (Exception) { /* display changing */ }
-    }
-
-    private void RefreshStatus()
-    {
-        string line = string.IsNullOrWhiteSpace(_host.SonMetin) ? "—" : _host.SonMetin;
-        string latency = _host.SonGecikmeMs > 0 ? _host.SonGecikmeMs.ToString(System.Globalization.CultureInfo.InvariantCulture) + " ms" : "—";
-        _status.Text = "OCR: " + _host.OcrDurum + "    Son çeviri: " + line + "    Gecikme: " + latency;
-        _status.ForeColor = UiTheme.Muted;
-        bool run = _host.IsRunning;
-        _start.Text = run ? "Durdur" : "Başlat";
-        _start.Primary = !run;
-        _start.Danger = run;
-        var s = _host.Current;
-        if (_sync) return;
-        var ocr = s.HasRegion ? new Rectangle(s.RegionX, s.RegionY, s.RegionWidth, s.RegionHeight) : _preview.OcrRegion;
-        var cap = CaptionRect(s, ocr);
-        _preview.SetRegions(ocr.Width > 0 ? ocr : _preview.OcrRegion, cap.Width > 0 ? cap : _preview.CaptionRegion, s, true);
-    }
-
-    private static Rectangle CaptionRect(AppSettings s, Rectangle ocr)
-    {
-        if (s.KonumAyarlandi && s.KutuGenislik >= 20)
-            return new Rectangle(s.KutuX, s.KutuY, s.KutuGenislik, s.KutuYukseklik > 0 ? s.KutuYukseklik : 72);
-        if (ocr.Width < 20) return Rectangle.Empty;
-        var screen = new EkranDikdortgen(0, 0, 8000, 8000);
-        var placed = SubtitleLayout.Resolve(s, new EkranDikdortgen(ocr.X, ocr.Y, ocr.Width, ocr.Height), screen, Math.Max(ocr.Width, 400), 72);
-        return new Rectangle(placed.X, placed.Y, placed.Width, placed.Height);
+        catch (Exception)
+        {
+            /* display changing, secure desktop, or lock screen */
+        }
     }
 
     private static Rectangle MonitorBounds(AppSettings s)
@@ -446,280 +720,343 @@ internal sealed class MainWindow : Form
         return Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
     }
 
+    // ---------------- boxes ----------------
+
+    private void LoadFromHost()
+    {
+        var s = _host.Current;
+        _screen = MonitorBounds(s);
+        if (s.KaynakPencere != "ekran" && FindSourceWindow() is { } found)
+        {
+            _window = found.Handle;
+            _windowTitle = found.Title;
+            _screen = found.Bounds;
+        }
+        _stage.SetLocked(PreviewStage.Orig, s.OrijinalKilitli);
+        _stage.SetLocked(PreviewStage.Trans, s.CeviriKilitli);
+        FillSources();
+        FillMonitors();
+        _stage.SetSource(_screen);
+        LoadBoxes();
+        _stage.SetLook(s, OrnekAltyazi);
+        SyncSelection();
+    }
+
+    private void LoadBoxes()
+    {
+        var s = _host.Current;
+        var src = _screen;
+        Rectangle orig = s.HasRegion
+            ? new Rectangle(s.RegionX, s.RegionY, s.RegionWidth, s.RegionHeight)
+            : new Rectangle(src.X + src.Width * 20 / 100, src.Y + src.Height * 79 / 100, src.Width * 60 / 100, Math.Max(PreviewStage.MinHeight(0), src.Height * 95 / 1000));
+        // First run: both boxes start apart (design defaults) instead of the legacy "right above the strip".
+        Rectangle trans = s.HasRegion || s.KonumAyarlandi ? CaptionRect(s, orig) : Rectangle.Empty;
+        if (trans.Width < 20)
+        {
+            int w = Math.Max(SubtitleLayout.MinWidth, src.Width * 64 / 100);
+            trans = new Rectangle(src.X + (src.Width - w) / 2, src.Y + src.Height * 635 / 1000, w, Math.Max(PreviewStage.MinHeight(1), src.Height * 105 / 1000));
+        }
+        _stage.SetBox(PreviewStage.Orig, orig);
+        _stage.SetBox(PreviewStage.Trans, trans);
+        _savedRegion = s.HasRegion ? orig : Rectangle.Empty;
+        RefreshGeometryFields();
+    }
+
+    private static Rectangle CaptionRect(AppSettings s, Rectangle ocr)
+    {
+        int h = s.KutuYukseklik > 0 ? s.KutuYukseklik : 72;
+        if (s.KonumAyarlandi && s.KutuGenislik >= SubtitleLayout.MinWidth)
+        {
+            if (s.BolgeyiTakipEt && ocr.Width > 0)
+                return new Rectangle(ocr.X + s.BagilX, ocr.Y + s.BagilY, s.KutuGenislik, h);
+            return new Rectangle(s.KutuX, s.KutuY, s.KutuGenislik, h);
+        }
+        if (ocr.Width < 20) return Rectangle.Empty;
+        var screen = Screen.FromRectangle(ocr).Bounds;
+        var placed = SubtitleLayout.Resolve(s, new EkranDikdortgen(ocr.X, ocr.Y, ocr.Width, ocr.Height),
+            new EkranDikdortgen(screen.X, screen.Y, screen.Width, screen.Height), Math.Max(ocr.Width, 400), h);
+        return new Rectangle(placed.X, placed.Y, placed.Width, placed.Height);
+    }
+
+    private static Rectangle Fit(Rectangle r, Rectangle src, int box)
+    {
+        int w = Math.Clamp(r.Width, Math.Min(PreviewStage.MinWidth(box), src.Width), src.Width);
+        int h = Math.Clamp(r.Height, Math.Min(PreviewStage.MinHeight(box), src.Height), src.Height);
+        int x = Math.Clamp(r.X, src.X, src.Right - w);
+        int y = Math.Clamp(r.Y, src.Y, src.Bottom - h);
+        return new Rectangle(x, y, w, h);
+    }
+
+    private void SaveRegions(bool showOverlay)
+    {
+        if (_loading) return;
+        var s = _host.Current.Clone();
+        var ocr = _stage.Box(PreviewStage.Orig);
+        s.RegionX = ocr.X;
+        s.RegionY = ocr.Y;
+        s.RegionWidth = ocr.Width;
+        s.RegionHeight = ocr.Height;
+        var cap = _stage.Box(PreviewStage.Trans);
+        if (cap.Width >= SubtitleLayout.MinWidth)
+        {
+            SubtitleLayout.Remember(s, new EkranDikdortgen(cap.X, cap.Y, cap.Width, cap.Height), new EkranDikdortgen(ocr.X, ocr.Y, ocr.Width, ocr.Height), follow: false);
+            s.KutuYukseklik = cap.Height;
+        }
+        _savedRegion = ocr;
+        _host.Apply(s, true);
+        if (showOverlay && s.HasRegion && !_host.IsRunning) _host.ShowPreview();
+    }
+
+    private void SelectBox(int i)
+    {
+        _stage.Select(i);
+        SyncSelection();
+    }
+
+    private void ToggleLock(int i) => SetLock(i, !_stage.IsLocked(i));
+
+    private void SetLock(int i, bool locked)
+    {
+        _stage.SetLocked(i, locked);
+        SyncSelection();
+        if (i == PreviewStage.Orig) Patch(s => s.OrijinalKilitli = locked);
+        else Patch(s => s.CeviriKilitli = locked);
+    }
+
+    private void SyncSelection()
+    {
+        int sel = _stage.Selected;
+        _chipOrig.Active = sel == PreviewStage.Orig;
+        _chipTrans.Active = sel == PreviewStage.Trans;
+        _chipOrig.Locked = _stage.IsLocked(PreviewStage.Orig);
+        _chipTrans.Locked = _stage.IsLocked(PreviewStage.Trans);
+        _boxSeg.SetSilently(sel);
+        _lockToggle.SetSilently(_stage.IsLocked(sel));
+        bool locked = _stage.IsLocked(sel);
+        foreach (var input in GeometryInputs()) input.Enabled = !locked;
+        _resetBox.Enabled = !locked;
+        RefreshGeometryFields();
+    }
+
+    // ---------------- host state ----------------
+
     private void OnState(object? sender, EventArgs e)
     {
-        if (IsDisposed) return;
-        try { BeginInvoke(new Action(() => { RefreshStatus(); RefreshOcrBanner(); })); }
+        if (IsDisposed || !IsHandleCreated) return;
+        try { BeginInvoke(new Action(RefreshAll)); }
         catch (InvalidOperationException) { /* closing */ }
     }
 
-    private void Patch(Action<AppSettings> edit)
+    private void RefreshAll()
+    {
+        if (IsDisposed) return;
+        var s = _host.Current;
+        // Region picked with F8 (full-screen selector): adopt it.
+        var region = s.HasRegion ? new Rectangle(s.RegionX, s.RegionY, s.RegionWidth, s.RegionHeight) : Rectangle.Empty;
+        if (region != _savedRegion && !Capture && !_stage.Capture)
+        {
+            _savedRegion = region;
+            if (!region.IsEmpty)
+            {
+                if (!_screen.IntersectsWith(region) && _window == IntPtr.Zero)
+                {
+                    _screen = Screen.FromRectangle(region).Bounds;
+                    _stage.SetSource(_screen);
+                }
+                _stage.SetBox(PreviewStage.Orig, region);
+                var cap = CaptionRect(s, region);
+                if (cap.Width >= 20) _stage.SetBox(PreviewStage.Trans, cap);
+                RefreshGeometryFields();
+            }
+        }
+        RefreshStatus();
+        RefreshAdvanced();
+        Invalidate(new Rectangle(0, 0, Theme.D(188), Theme.D(110)));
+    }
+
+    private int _statusHeight;
+
+    private void RefreshStatus()
+    {
+        bool run = _host.IsRunning;
+        _run.Text = run ? "Durdur" : "Başlat";
+        _run.Glyph = run ? Ic.Stop : Ic.Play;
+        _run.Kind = run ? ButtonKind.Danger : ButtonKind.Primary;
+        _nav[3].Dot = _offer != null || _host.OcrPaketiEksik;
+        string sample = run && !string.IsNullOrWhiteSpace(_host.SonMetin) ? _host.SonMetin : OrnekAltyazi;
+        _stage.SetLook(_host.Current, sample);
+        int sh = StatusHeight();
+        if (sh != _statusHeight) { _statusHeight = sh; Arrange(); }
+        _statusCard.Invalidate();
+        _lastCard.Invalidate();
+        _sourceCard.Invalidate();
+    }
+
+    private TourCue[] _cues = Array.Empty<TourCue>();
+
+    private void StartTour()
+    {
+        _pageBeforeTour = _navIndex;
+        _cues = BuildCues();
+        _tour.Play(_cues);
+    }
+
+    private void EndTour()
+    {
+        if (!_host.Current.TanitimGoruldu) Patch(s => s.TanitimGoruldu = true);
+        ShowNav(_pageBeforeTour);
+    }
+
+    private TourCue[] BuildCues()
+    {
+        ShowNav(0);
+        Arrange();
+        Rectangle UnionNav()
+        {
+            var r = _nav[0].Bounds;
+            foreach (var n in _nav) r = Rectangle.Union(r, n.Bounds);
+            return r;
+        }
+        Rectangle OnForm(Control c, Rectangle inner)
+        {
+            var p = PointToClient(c.PointToScreen(inner.Location));
+            return new Rectangle(p, inner.Size);
+        }
+        var list = new List<TourCue>
+        {
+            new(UnionNav(), "Sol menü", "Önizleme, Görünüm, Sözlük ve Gelişmiş burada. Her biri sağdaki paneli değiştirir.", 0),
+            new(_previewCard.Bounds, "Canlı önizleme", "Seçtiğin ekran burada görünür. Altyazı kutularını bu görüntünün üstüne koyarsın.", 0),
+            new(OnForm(_stage, _stage.BoxClient(PreviewStage.Orig)), "Orijinal altyazı", "Bu kutu oyunun İngilizce altyazısının okunduğu alandır. Sürükleyerek taşı, tutamaçlardan boyutlandır.", 0),
+            new(OnForm(_stage, _stage.BoxClient(PreviewStage.Trans)), "Çeviri kutusu", "Türkçe yazı bu kutunun yerinde çıkar. Onu da sürükleyip boyutlandırabilirsin.", 0),
+            new(_sourceCard.Bounds, "Kaynak ve monitör", "Kaynak hangi pencereyi, Monitör hangi ekranı okuyacağını seçer.", 0),
+            new(_inspector.Bounds, "Alanlar", "Seçili kutunun konumu ve boyutu sayı olarak burada durur. İstersen buradan da yazarsın.", 0),
+            new(_statusCard.Bounds, "Başlat ve durum", "Başlat okumayı açar. Alttaki yazı hazır mı, çalışıyor mu onu söyler.", 0),
+            new(_lastCard.Bounds, "Son çeviri", "En son okunan satır ve Türkçesi bu kartta görünür.", 0),
+            new(_inspector.Bounds, "Görünüm", "Yazı boyutu, renk ve arka plan burada. Örnek cümle önizlemede hemen değişir.", 1),
+            new(_inspector.Bounds, "Sözlük", "Oyun adlarını ve terimleri buradan korursun. Paketleri açıp kapatabilirsin.", 2),
+            new(_inspector.Bounds, "Gelişmiş", "Güncelleme, OCR paketi ve bu tanıtımın tekrarı buradadır.", 3),
+        };
+        ShowNav(0);
+        return list.ToArray();
+    }
+
+    private void CaptureShots(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        Arrange();
+        Refresh();
+        SaveShot(dir, "01-ana.png");
+        StartTour();
+        (int Step, string Name)[] frames =
+        {
+            (0, "02-tur-menu.png"),
+            (2, "03-tur-orijinal.png"),
+            (5, "04-tur-alanlar.png"),
+            (8, "05-tur-gorunum.png"),
+        };
+        foreach (var (step, name) in frames)
+        {
+            _tour.Go(step);
+            SaveShot(dir, name);
+        }
+    }
+
+    private void SaveShot(string dir, string name)
+    {
+        using var bmp = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
+        DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+        if (_tour.Visible && _tour.Width > 0 && _tour.Height > 0)
+        {
+            using var overlay = new Bitmap(_tour.Width, _tour.Height);
+            _tour.DrawToBitmap(overlay, new Rectangle(Point.Empty, overlay.Size));
+            using var g = Graphics.FromImage(bmp);
+            g.DrawImage(overlay, _tour.Location);
+        }
+        bmp.Save(Path.Combine(dir, name), System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    private void Patch(Action<AppSettings> edit, bool persist = true)
     {
         if (_loading) return;
         var s = _host.Current.Clone();
         edit(s);
-        _host.Apply(s, true);
+        _host.Apply(s, persist);
+    }
+}
+
+/// <summary>Window enumeration and frame metrics for the custom title bar.</summary>
+internal static class NativeUi
+{
+    public const uint SWP_FRAMECHANGED = 0x0020, SWP_NOZORDER = 0x0004;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NCCALCSIZE_PARAMS
+    {
+        public RECT Rect0, Rect1, Rect2;
+        public IntPtr Pos;
     }
 
-    private void FillGlossary()
-    {
-        if (_glossary == null) return;
-        string q = _search?.Text?.Trim() ?? "";
-        _glossary.Items.Clear();
-        foreach (var g in SozlukKutuphanesi.Etkin(_host.Current))
-        {
-            string line = g.Ingilizce + (string.IsNullOrEmpty(g.Turkce) ? "  →  koru" : "  →  " + g.Turkce);
-            if (q.Length > 0 && line.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0) continue;
-            _glossary.Items.Add(line);
-        }
-    }
+    [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] private static extern int GetSystemMetricsForDpi(int index, uint dpi);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out int value, int size);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out RECT value, int size);
 
-    private void AddEntry()
-    {
-        string? term = Prompt("İngilizce terim");
-        if (string.IsNullOrWhiteSpace(term)) return;
-        string? tr = Prompt("Türkçe (boşsa olduğu gibi kalır)") ?? "";
-        Patch(s =>
-        {
-            s.Sozluk ??= new List<SozlukGirdisi>();
-            s.Sozluk.RemoveAll(g => g.Ingilizce.Equals(term, StringComparison.OrdinalIgnoreCase));
-            s.Sozluk.Add(new SozlukGirdisi(term.Trim(), tr.Trim()));
-        });
-        FillGlossary();
-    }
+    private delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
 
-    private void DeleteEntry()
+    public static int Frame(int dpi, bool horizontal)
     {
-        if (_glossary?.SelectedItem is not string line) return;
-        string term = line.Split("  →  ")[0];
-        Patch(s =>
-        {
-            s.Sozluk ??= new List<SozlukGirdisi>();
-            s.Sozluk.RemoveAll(g => g.Ingilizce.Equals(term, StringComparison.OrdinalIgnoreCase));
-            if (SozlukKutuphanesi.Etkin(new AppSettings { AcikPaketler = s.AcikPaketler, Sozluk = new() }).Any(g => g.Ingilizce.Equals(term, StringComparison.OrdinalIgnoreCase)))
-                s.Sozluk.Add(new SozlukGirdisi(term, term));
-        });
-        FillGlossary();
-    }
-
-    private void ExportEntries()
-    {
-        using var dlg = new SaveFileDialog { Filter = "JSON|*.json", FileName = "sozluk.json" };
-        if (dlg.ShowDialog(this) != DialogResult.OK) return;
-        File.WriteAllText(dlg.FileName, SozlukKutuphanesi.DisaAktar(_host.Current.Sozluk ?? new List<SozlukGirdisi>()));
-    }
-
-    private void ImportEntries()
-    {
-        using var dlg = new OpenFileDialog { Filter = "JSON|*.json" };
-        if (dlg.ShowDialog(this) != DialogResult.OK) return;
-        var rows = SozlukKutuphanesi.IceAktar(File.ReadAllText(dlg.FileName));
-        Patch(s =>
-        {
-            s.Sozluk ??= new List<SozlukGirdisi>();
-            foreach (var row in rows)
-            {
-                s.Sozluk.RemoveAll(g => g.Ingilizce.Equals(row.Ingilizce, StringComparison.OrdinalIgnoreCase));
-                s.Sozluk.Add(row);
-            }
-        });
-        FillGlossary();
-    }
-
-    private string? Prompt(string title)
-    {
-        using var form = new Form
-        {
-            Text = title, FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent,
-            ClientSize = new Size(360, 110), MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false,
-            BackColor = UiTheme.Bg, ForeColor = UiTheme.Text,
-        };
-        var box = new TextBox { Left = 12, Top = 16, Width = 336, BackColor = UiTheme.Card, ForeColor = UiTheme.Text };
-        var ok = new FlatButton { Text = "Tamam", Primary = true, Left = 180, Top = 56, Width = 80 };
-        var cancel = new FlatButton { Text = "Vazgeç", Left = 268, Top = 56, Width = 80 };
-        string? result = null;
-        ok.Click += (_, _) => { result = box.Text; form.Close(); };
-        cancel.Click += (_, _) => form.Close();
-        form.Controls.Add(box);
-        form.Controls.Add(ok);
-        form.Controls.Add(cancel);
-        form.ShowDialog(this);
-        return result;
-    }
-
-    private void PickWindow()
-    {
-        var windows = WindowList();
-        if (windows.Count == 0) return;
-        using var form = new Form
-        {
-            Text = "Pencere", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent,
-            ClientSize = new Size(420, 320), BackColor = UiTheme.Bg, ForeColor = UiTheme.Text,
-        };
-        var list = new ListBox { Dock = DockStyle.Fill, BackColor = UiTheme.Card, ForeColor = UiTheme.Text, BorderStyle = BorderStyle.None };
-        foreach (var w in windows) list.Items.Add(w.Title);
-        list.DoubleClick += (_, _) =>
-        {
-            if (list.SelectedIndex < 0) return;
-            var chosen = windows[list.SelectedIndex];
-            _window = chosen.Handle;
-            _screen = chosen.Bounds;
-            form.Close();
-            Grab();
-        };
-        form.Controls.Add(list);
-        form.ShowDialog(this);
-    }
-
-    private void RefreshOcrBanner()
-    {
-        if (_ocrInstalling) return;
-        if (_host.OcrPaketiEksik)
-        {
-            _ocrText.Text = OcrDilPaketi.Banner(_host.Current.KaynakDil);
-            _ocrBanner.Visible = true;
-        }
-        else _ocrBanner.Visible = false;
-    }
-
-    private async Task KurOcrAsync(FlatButton button)
-    {
-        if (_ocrInstalling) return;
-        _ocrInstalling = true;
-        button.Enabled = false;
-        button.Text = "Kuruluyor…";
+        const int SM_CXSIZEFRAME = 32, SM_CYSIZEFRAME = 33, SM_CXPADDEDBORDER = 92;
         try
         {
-            var (ok, mesaj) = await OcrPaketKur.KurAsync(_host.Current.KaynakDil).ConfigureAwait(true);
-            if (IsDisposed) return;
-            if (!ok)
-            {
-                MessageBox.Show(this, mesaj, "Altyazı Çevirici", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-            if (_host.YenidenYukleOcr())
-                MessageBox.Show(this, "Yazı tanıma paketi hazır.", "Altyazı Çevirici", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            else
-                MessageBox.Show(this, "Paket kuruldu. Tanıma açılmazsa Altyazı Çevirici'yi kapatıp yeniden aç.", "Altyazı Çevirici", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return GetSystemMetricsForDpi(horizontal ? SM_CXSIZEFRAME : SM_CYSIZEFRAME, (uint)dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, (uint)dpi);
         }
-        finally
-        {
-            _ocrInstalling = false;
-            if (!IsDisposed) { button.Text = "Kur"; button.Enabled = true; RefreshOcrBanner(); }
-        }
+        catch (EntryPointNotFoundException) { return 8; }
     }
 
-    private async Task CheckUpdatesAsync(bool interactive)
+    /// <summary>Visible bounds of a window (without the invisible resize border on Windows 10/11).</summary>
+    public static bool TryWindowRect(IntPtr h, out Rectangle rect)
     {
-        if (_checking) return;
-        _checking = true;
-        try
-        {
-            var info = await GuncellemeIstegi.SorgulaAsync().ConfigureAwait(true);
-            if (IsDisposed) return;
-            if (info == null)
-            {
-                if (interactive) MessageBox.Show(this, "Güncelleme denetlenemedi.", "Altyazı Çevirici");
-                return;
-            }
-            if (!SurumKarsilastirma.IsNewer(info.Tag, GuncellemeIstegi.UygulamaSurumu))
-            {
-                if (interactive) MessageBox.Show(this, "Bu sürüm güncel.", "Altyazı Çevirici");
-                return;
-            }
-            if (!interactive && !GuncellemeOkuyucu.BannerGoster(GuncellemeIstegi.UygulamaSurumu, info, _host.Current.AtlananSurum))
-                return;
-            _offer = info;
-            _bannerText.Text = "Yeni sürüm var: " + info.Tag + " — Güncelle / Daha sonra / Bu sürümü atla";
-            _banner.Visible = true;
-        }
-        finally { _checking = false; }
+        rect = Rectangle.Empty;
+        if (!IsWindow(h) || IsIconic(h)) return false;
+        RECT r;
+        bool ok = DwmGetWindowAttribute(h, 9 /* DWMWA_EXTENDED_FRAME_BOUNDS */, out r, Marshal.SizeOf<RECT>()) == 0;
+        if (!ok && !GetWindowRect(h, out r)) return false;
+        rect = Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom);
+        return rect.Width >= 50 && rect.Height >= 50;
     }
 
-    private async Task InstallAsync()
+    public static List<(IntPtr Handle, string Title)> Windows()
     {
-        var info = _offer;
-        if (info == null) return;
-        if (!_host.KurulumKopyasi || !GuncellemeOkuyucu.GuvenliKurulumAdresi(info.KurulumUrl))
+        var list = new List<(IntPtr, string)>();
+        uint self = (uint)Environment.ProcessId;
+        EnumWindows((h, lp) =>
         {
-            GuncellemeIstegi.SayfayiAc(info.Sayfa);
-            return;
-        }
-        _progress.Visible = true;
-        var path = await GuncellemeIstegi.IndirAsync(info, new Progress<double>(p =>
-        {
-            if (IsHandleCreated) BeginInvoke(new Action(() => _progress.Value = (int)Math.Clamp(p * 100, 0, 100)));
-        }), CancellationToken.None).ConfigureAwait(true);
-        if (path == null)
-        {
-            GuncellemeIstegi.SayfayiAc(info.Sayfa);
-            return;
-        }
-        try { GuncellemeIstegi.KurulumuBaslat(path); }
-        catch (Exception ex) { ErrorLog.Write(ex, "update"); GuncellemeIstegi.SayfayiAc(info.Sayfa); return; }
-        _host.Quit();
-    }
-
-    private static List<(IntPtr Handle, string Title, Rectangle Bounds)> WindowList()
-    {
-        var list = new List<(IntPtr, string, Rectangle)>();
-        EnumWindows((h, _) =>
-        {
-            if (!IsWindowVisible(h)) return true;
+            if (!IsWindowVisible(h) || IsIconic(h)) return true;
+            if (GetWindow(h, 4 /* GW_OWNER */) != IntPtr.Zero) return true;
+            _ = GetWindowThreadProcessId(h, out uint pid);
+            if (pid == self) return true;
+            if (DwmGetWindowAttribute(h, 14 /* DWMWA_CLOAKED */, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
             var chars = new char[512];
             int n = GetWindowText(h, chars, chars.Length);
             if (n <= 0) return true;
-            string title = new string(chars, 0, n);
-            if (!GetWindowRect(h, out var rect)) return true;
-            int w = rect.Right - rect.Left, height = rect.Bottom - rect.Top;
-            if (w < 200 || height < 120) return true;
-            list.Add((h, title, new Rectangle(rect.Left, rect.Top, w, height)));
+            string title = new string(chars, 0, n).Trim();
+            if (title.Length == 0 || title == "Program Manager") return true;
+            if (!TryWindowRect(h, out var r) || r.Width < 200 || r.Height < 120) return true;
+            list.Add((h, title));
             return list.Count < 40;
         }, IntPtr.Zero);
         return list;
-    }
-
-    private delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
-    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc lpEnumFunc, IntPtr lParam);
-    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-    private struct RECT { public int Left, Top, Right, Bottom; }
-
-    private static FlowLayoutPanel Column() => new()
-    {
-        Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, BackColor = UiTheme.Bg, Padding = new Padding(4),
-    };
-
-    private static Label Note(string text) => new()
-    {
-        Text = text, AutoSize = true, MaximumSize = new Size(860, 0), ForeColor = UiTheme.Muted, Margin = new Padding(0, 4, 0, 4),
-    };
-
-    private static FlowLayoutPanel ToggleRow(string text, bool on, Action<bool> set)
-    {
-        var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        var toggle = new ToggleSwitch { On = on };
-        toggle.CheckedChanged += (_, _) => set(toggle.On);
-        row.Controls.Add(toggle);
-        row.Controls.Add(new Label { Text = text, AutoSize = true, Margin = new Padding(8, 4, 0, 0), ForeColor = UiTheme.Text });
-        return row;
-    }
-
-    private static FlatSlider Slider(int min, int max, int value, out Label readout)
-    {
-        var slider = new FlatSlider { Minimum = min, Maximum = max, Width = 240 };
-        slider.Value = Math.Clamp(value, min, max);
-        readout = new Label { AutoSize = true, ForeColor = UiTheme.Text, Margin = new Padding(8, 4, 0, 0), Text = slider.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) };
-        return slider;
-    }
-
-    private static FlowLayoutPanel Labeled(string name, Control slider, Label value)
-    {
-        var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-        row.Controls.Add(new Label { Text = name, AutoSize = true, Width = 110, ForeColor = UiTheme.Text, Margin = new Padding(0, 4, 8, 0) });
-        row.Controls.Add(slider);
-        row.Controls.Add(value);
-        return row;
     }
 }

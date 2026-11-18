@@ -22,6 +22,9 @@ internal sealed class OverlayForm : Form
     private int _bgAlpha = 165;
     private int _offsetY;
     private int _outline = 4;
+    private Color _outlineColor = Color.Black;
+    private string _family = "Segoe UI";
+    private string _fontFamily = "";
     private AppSettings _look = new();
 
     public OverlayForm()
@@ -30,7 +33,7 @@ internal sealed class OverlayForm : Form
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
-        Text = "Altyazı Çevirici Katmanı";
+        Text = AppInfo.DisplayName + " Katmanı";
         _fmt = new StringFormat(StringFormat.GenericTypographic)
         {
             Alignment = StringAlignment.Center,
@@ -76,6 +79,8 @@ internal sealed class OverlayForm : Form
         _look = s;
         _outline = Math.Clamp(s.DisCizgi, 0, 16);
         _textColor = AppSettings.TryParseColor(s.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
+        _outlineColor = AppSettings.TryParseColor(s.DisCizgiRengi, out var oc) ? Color.FromArgb(255, oc.R, oc.G, oc.B) : Color.Black;
+        _family = Ui.SubtitleFonts.Resolve(s.YaziTipi);
         _bgAlpha = (int)Math.Round(Math.Clamp(s.ArkaPlanOpakligi, 0, 100) * 2.55);
         _offsetY = s.DikeyKaydirma;
     }
@@ -109,11 +114,12 @@ internal sealed class OverlayForm : Form
         _lastText = text;
         _lastFallback = isFallback;
         _lastRegion = _region;
-        if (_font == null || _fontFor != _fontSize)
+        if (_font == null || _fontFor != _fontSize || _fontFamily != _family)
         {
             _font?.Dispose();
-            _font = new Font("Segoe UI", _fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+            _font = new Font(_family, _fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
             _fontFor = _fontSize;
+            _fontFamily = _family;
         }
         var font = _font;
         var fmt = _fmt;
@@ -158,7 +164,7 @@ internal sealed class OverlayForm : Form
             path.AddString(text, font.FontFamily, (int)font.Style, emSize, layout, fmt);
             if (_outline > 0)
             {
-                using var outline = new Pen(Color.FromArgb(255, 0, 0, 0), _outline) { LineJoin = LineJoin.Round };
+                using var outline = new Pen(_outlineColor, _outline) { LineJoin = LineJoin.Round };
                 g.DrawPath(outline, path);
             }
             using (var fill = new SolidBrush(isFallback ? Color.FromArgb(255, 200, 200, 200) : _textColor))

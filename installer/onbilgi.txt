@@ -1,4 +1,4 @@
-﻿Altyazı Çevirici, ekrandaki İngilizce altyazıyı okuyup Türkçesini gösterir.
+﻿Tercüman, ekrandaki İngilizce altyazıyı okuyup Türkçesini gösterir.
 
 Kurulum yönetici istemez ve yalnızca senin hesabına yapılır.
 Varsayılan klasör: %LocalAppData%\Programs\AltyaziCevirici

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=1280">
+<title>Altyazı Çevirici · Konsept A (Stüdyo)</title>
+<style>
+/*P:CSS*/
+/* ---- Konsept A: sol menü + önizleme + inceleme paneli ---- */
+.a-body{flex:1;display:grid;grid-template-columns:188px 1fr 308px;min-height:0}
+.a-nav{padding:4px 10px 14px 12px;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 14px}
+.brand svg{width:38px;height:38px}
+.brand b{display:block;font:600 14px/1.2 'Segoe UI Variable Display','Segoe UI',sans-serif}
+.nav{height:38px;border:0;background:none;border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:13.5px;font-weight:500;color:var(--tx2);cursor:pointer;position:relative;text-align:left}
+.nav:hover{background:rgba(15,30,45,.05)}
+.nav.active{background:#fff;color:var(--tx);font-weight:600;box-shadow:var(--sh1)}
+.nav.active::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--acc)}
+.nav.active .ico{color:var(--acc-d)}
+.a-status{padding:14px;display:flex;flex-direction:column;gap:12px}
+.a-status .r{display:flex;align-items:center;gap:9px;font-weight:600}
+.a-status .kv{display:flex;justify-content:space-between;font-size:12.5px;color:var(--tx2)}
+.a-status .kv b{color:var(--tx);font-variant-numeric:tabular-nums}
+.a-status .btn{width:100%}
+.a-main{padding:4px 16px 16px 6px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.a-head{display:flex;align-items:flex-end;gap:16px;padding:0 4px}
+.a-head p{color:var(--tx2);font-size:13px;margin-top:2px}
+.legend{display:flex;gap:6px}
+.legend{gap:8px}
+.chipgrp{display:flex;height:30px;border:1px solid var(--line2);border-radius:15px;background:#fff;overflow:hidden}
+.chipgrp:has(.chip.active){border-color:var(--acc-d);box-shadow:0 0 0 3px var(--acc-t2)}
+.chip{padding:0 10px 0 12px;border:0;background:none;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--tx2);white-space:nowrap}
+.chip.active{color:var(--tx)}
+.chip:hover,.lk:hover{background:rgba(15,30,45,.05)}
+.lk{width:32px;border:0;border-left:1px solid var(--line);background:none;display:grid;place-items:center;color:var(--tx3);cursor:pointer}
+.lk .l{display:none}
+.lk.on{background:var(--acc-t);color:var(--acc-dd)}
+.lk.on .l{display:block}.lk.on .u{display:none}
+.preview{padding:8px}
+.preview .stage{aspect-ratio:16/9;border-radius:8px}
+.srcbar{padding:10px 14px;display:flex;align-items:center;gap:12px}
+.lastcard{flex:1;min-height:0;padding:12px 16px;display:flex;align-items:center;gap:14px}
+.lastcard .set-i{background:var(--acc-t)}
+.lastcard .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.lastcard .t b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lastcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-insp{margin:4px 14px 16px 0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.a-insp section{padding:18px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:0}
+.a-insp header p{color:var(--tx2);font-size:12.5px;margin-top:3px}
+</style></head>
+<body>
+<!--P:DEFS-->
+<div class="app">
+  <!--P:TITLEBAR-->
+  <div class="a-body">
+    <nav class="a-nav">
+      <div class="brand"><svg><use href="#mascot"/></svg><div><b>Altyazı Çevirici</b><small>İngilizce → Türkçe</small></div></div>
+      <div data-tabs="main" style="display:flex;flex-direction:column;gap:4px">
+        <button class="nav active" data-tab="areas"><svg class="ico"><use href="#i-crop"/></svg>Önizleme</button>
+        <button class="nav" data-tab="look"><svg class="ico"><use href="#i-text"/></svg>Görünüm</button>
+        <button class="nav" data-tab="dict"><svg class="ico"><use href="#i-book"/></svg>Sözlük</button>
+        <button class="nav" data-tab="adv"><svg class="ico"><use href="#i-sliders"/></svg>Gelişmiş</button>
+      </div>
+      <div class="sp"></div>
+      <div class="card a-status">
+        <div class="r"><i class="dot"></i><span data-status>Hazır</span></div>
+        <div class="kv"><span>Gecikme</span><b data-ms>—</b></div>
+        <button class="btn primary lg run" data-run-toggle><svg class="ico i-play"><use href="#i-play"/></svg><svg class="ico i-stop"><use href="#i-stop"/></svg><span data-run-label>Başlat</span></button>
+      </div>
+    </nav>
+
+    <main class="a-main">
+      <div class="a-head">
+        <div><h1>Canlı önizleme</h1><p>Kutuları sürükleyip yerleştir, yerini bulunca kilitle.</p></div>
+        <div class="sp"></div>
+        <div class="legend">
+          <div class="chipgrp"><button class="chip" data-select="orig"><i class="key o"></i>Orijinal altyazı</button><button class="lk" data-lock="orig" aria-label="Orijinal altyazı alanını kilitle"><svg class="ico sm u"><use href="#i-unlock"/></svg><svg class="ico sm l"><use href="#i-lock"/></svg></button></div>
+          <div class="chipgrp"><button class="chip" data-select="trans"><i class="key t"></i>Çeviri</button><button class="lk" data-lock="trans" aria-label="Çeviri alanını kilitle"><svg class="ico sm u"><use href="#i-unlock"/></svg><svg class="ico sm l"><use href="#i-lock"/></svg></button></div>
+        </div>
+      </div>
+      <div class="card preview"><!--P:STAGE--></div>
+      <div class="card srcbar"><!--P:SOURCE--><div class="sp"></div><span class="badge ok"><svg class="ico sm"><use href="#i-check"/></svg>Görüntü alınıyor</span><button class="btn icon ghost" aria-label="Kaynakları yenile" title="Yenile"><svg class="ico sm"><use href="#i-sync"/></svg></button></div>
+      <div class="card lastcard">
+        <span class="set-i"><svg class="ico"><use href="#i-bolt"/></svg></span>
+        <div class="t"><small>Son çeviri</small><b data-last></b><small data-text="orig"></small></div>
+        <span class="badge" data-ms>—</span>
+      </div>
+    </main>
+
+    <aside class="card a-insp">
+      <section class="scroll" data-panel="main:areas">
+        <header><h2>Alanlar</h2><p>Seçili kutunun tam konumu ve boyutu.</p></header>
+        <!--P:GEO-->
+        <label class="opt" style="margin-top:0"><span><b>Bu alanı kilitle</b><small>Kilitliyken taşınmaz ve boyutlanmaz; tıklamalar alttaki kutuya geçer.</small></span><span class="switch"><input type="checkbox" data-lock-sel><i></i></span></label>
+        <div class="hint"><svg class="ico sm"><use href="#i-info"/></svg><span>Kutular üst üste gelince seçili olan üstte kalır. Diğerini seçmek için etiketine ya da yukarıdaki adına tıkla.</span></div>
+      </section>
+      <section class="scroll" data-panel="main:look" hidden>
+        <header><h2>Görünüm</h2><p>Değişiklikler önizlemedeki çeviriye anında yansır.</p></header>
+        <!--P:LOOK-->
+      </section>
+      <section class="scroll" data-panel="main:dict" hidden>
+        <header><h2>Sözlük</h2><p>Oyuna özel terimler doğru çevrilsin.</p></header>
+        <!--P:DICT-->
+      </section>
+      <section class="scroll" data-panel="main:adv" hidden>
+        <header><h2>Gelişmiş</h2><p>Kurulum ve bakım ayarları.</p></header>
+        <!--P:ADV-->
+      </section>
+    </aside>
+  </div>
+</div>
+<script>
+/*P:JS*/
+</script>
+<script>
+document.addEventListener('tabchange',e=>{if(e.detail.g==='main'&&e.detail.n==='look')AC.select('trans');});
+</script>
+</body></html>

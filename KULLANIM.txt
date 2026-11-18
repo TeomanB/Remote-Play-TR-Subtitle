@@ -1,4 +1,4 @@
-﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.4 - önizleme tuvali ve sözlük paketleri)
+﻿TERCÜMAN - KULLANIM  (sürüm 1.5 - yeni açık temalı kontrol merkezi)
 ===========================
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
@@ -24,34 +24,41 @@ KURULUM
 1) PS Remote Play'i aç, oyunu başlat. Remote Play penceresini istediğin boyuta getir.
    Pencerenin yerini sonra değiştirirsen bölgeyi yeniden seç.
 2) AltyaziCevirici.exe'yi çalıştır. Kontrol merkezi açılır; ekran kendiliğinden kararmaz.
-   "Bölge Seç"e bas, altyazının çıktığı şeridi sürükleyerek işaretle.
-   Daha önce seçtiğin bölge durur ve önizlemede görünür.
-3) "Başlat"a bas. Türkçe çeviri ekranda görünür. "Durdur" okumayı keser.
+   Ortadaki büyük önizlemede iki kutu var:
+   - Turuncu "Orijinal altyazı": oyunun İngilizce yazısının okunduğu yer. Altyazı şeridinin üstüne getir.
+   - Turkuaz "Çeviri": Türkçe yazının çıkacağı yer.
+   Kutuyu sürükleyerek taşı, köşe ve kenarlardaki tutamaçlardan büyüt. Bırakınca kendiliğinden kaydolur.
+   Kutular üst üste gelirse seçili olan üstte kalır; diğerini seçmek için etiketine ya da
+   yukarıdaki adına tıkla. Yerini bulduğun kutuyu kilit simgesiyle sabitle.
+   Önizlemenin altındaki "Kaynak" listesinden Remote Play penceresini, "Monitör" listesinden ekranı seç.
+3) Sol alttaki "Başlat"a bas. Türkçe çeviri ekranda görünür. "Durdur" okumayı keser.
    Pencereyi kapatmak programı kapatmaz; saat yanındaki simgeye küçültür.
    Simgeye çift tıkla ya da menüden "Göster" de.
 
 KISAYOL TUŞLARI
-- F8  : Altyazı bölgesini seç
+- F8  : Altyazı bölgesini tam ekranda işaretle
 - F9  : Duraklat / devam et
 - F10 : Çıkış
+- Ctrl+1 ... Ctrl+4 : Önizleme, Görünüm, Sözlük, Gelişmiş
 - Simgeye ÇİFT TIKLA: Kontrol merkezini göster
 - Simgeye SAĞ TIKLA: Göster, başlat/durdur, bölge, duraklat, çıkış
 
-YENİ: AYARLAR PENCERESİ (1.2)
-Değişiklikler anında uygulanır. "Kaydet" ya da pencereyi kapatmak kaydeder, "Vazgeç" eski haline döndürür.
-- Genel: altyazı bölgesini yeniden seç, duraklat/devam et, altyazı dili ve çeviri dili,
-  cümle ortasındaki isimleri koruma, beyaz yazı filtresi.
-  (Beyaz yazı filtresi sadece beyaz yazıyı okur, arka plan karışıkken daha iyi çalışır.
-  Altyazı renkliyse ya da hiç okunmuyorsa kapatıp dene.)
-- Görünüm: yazı boyutu, yazı rengi (hazır renkler ya da "Renk seç"), arka plan opaklığı (%0 = kutusuz),
-  çeviri konumu (bölgenin üstünde / altında / altyazının üzerinde), dikey kaydırma (piksel).
-  "Önizleme göster" ile örnek bir yazıyı birkaç saniye görebilirsin.
-- Sözlük: oyundaki yer ve kişi adları gibi özel kelimeler. Sol sütuna ekranda görünen İngilizce
-  kelimeyi, sağa istediğin Türkçe çıktıyı yaz. Sağı boş bırakırsan kelime olduğu gibi kalır.
+KONTROL MERKEZİ (1.5)
+Değişiklikler anında uygulanır ve kendiliğinden kaydedilir. Soldaki menü sağdaki paneli değiştirir.
+- Önizleme: seçili kutunun konumu (X, Y) ve boyutu (G, Y) sayıyla; "Varsayılana döndür",
+  "Ekranda işaretle (F8)" ve "Bu alanı kilitle".
+- Görünüm: yazı tipi, boyut, yazı rengi, dış çizgi rengi ve kalınlığı, arka plan opaklığı (%0 = kutusuz).
+  Önizlemedeki örnek Türkçe yazı anında değişir; bölge seçiliyse örnek yazı birkaç saniye oyunda da görünür.
+- Sözlük: paket ve terim arama, oyun paketlerini aç/kapa (GTA 6 vb.), kendi terimini ekle/sil,
+  içe/dışa aktar. Sola ekranda görünen İngilizce kelimeyi, sağa istediğin Türkçeyi yaz.
+  Sağı boş bırakırsan kelime olduğu gibi kalır.
   Örnek: "Port Gellhorn" → boş (böylece "Gellhorn Limanı" diye çevrilmez), "Blackwater" → "Karasu".
   Türkçe ekler otomatik düzeltilir: "Port Gellhorn'da", "Vice City'ye", "Lucia'yla".
-  "Satır ekle" / "Seçili satırları sil" / "GTA 6 isimlerini ekle" düğmeleri var.
-- Kısayollar: tüm tuşların listesi.
+  "Büyük harfli özel isimleri çevirme" cümle ortasındaki adları olduğu gibi bırakır.
+- Gelişmiş: güncellemeler, yazı tanıma paketi ve "Kur", altyazı dili, beyaz yazı filtresi,
+  "Windows açılınca başlat", açılışta otomatik güncelleme denetimi, ayar dosyasını aç.
+  (Beyaz yazı filtresi sadece beyaz yazıyı okur, arka plan karışıkken daha iyi çalışır.
+  Altyazı renkliyse ya da hiç okunmuyorsa kapatıp dene.)
 
 KÜFÜRLER VE İSİMLER (1.2)
 - Küfürler her zaman sansürsüz çevrilir. Google Çeviri "What the fuck are you doing?" gibi cümlelerde
@@ -64,11 +71,10 @@ KÜFÜRLER VE İSİMLER (1.2)
 - Bu düzeltmeler İngilizce → Türkçe içindir; başka dil çiftlerinde sadece Sözlük uygulanır.
 
 YAZI TANIMA PAKETİ
-Program Windows'un kendi metin tanımasını kullanır. Seçtiğin dilin paketi yoksa kontrol merkezinde
-"İngilizce yazı tanıma paketi eksik — Kur" şeridi çıkar. Kur'a bas; Windows yönetici izni ister.
-İzni vermezsen program kapanmaz. Paket hemen tanınırsa yeniden başlatmana gerek kalmaz.
-Tanıma açılmazsa programı bir kez kapatıp yeniden aç. Kaynak panelindeki
-"Yazı tanıma paketini kur" düğmesi aynı işi yapar.
+Program Windows'un kendi metin tanımasını kullanır. Seçtiğin dilin paketi yoksa sol alttaki durum
+kartında "OCR paketi eksik" yazar. Ona ya da Gelişmiş menüsüne tıkla, "OCR dil paketi" satırındaki
+Kur'a bas; Windows yönetici izni ister. İzni vermezsen program kapanmaz. Paket hemen tanınırsa
+yeniden başlatmana gerek kalmaz. Tanıma açılmazsa programı bir kez kapatıp yeniden aç.
 
 İPUÇLARI
 - Oyun içinden altyazıyı açık, mümkünse büyük boy ve arka planlı seç; okuma çok daha iyi olur.
@@ -89,7 +95,10 @@ GİZLİLİK
   %AppData%\AltyaziCevirici altında. Bir sorun olursa bu dosyayı gönderebilirsin.
 
 AYAR DOSYASI
-- Tüm ayarlar ve sözlük "ayarlar.json" dosyasında durur. Eski sürümün ayar dosyası aynen çalışır
+- Tüm ayarlar ve sözlük "ayarlar.json" dosyasında durur. Program açılırken ayarlarını bu dosyadan okur:
+  kutuların yeri ve kilitleri, görünüm, sözlük, seçtiğin kaynak pencere ve monitör, pencerenin boyutu
+  ve konumu, son açık sayfa, "Windows açılınca başlat". Gelişmiş > "Ayar dosyası" > "Göster" dosyayı
+  klasöründe açar. Eski sürümün ayar dosyası aynen çalışır
   (bölgen ve seçimlerin korunur, yeni ayarlar varsayılanla eklenir).
 - Yazılabilen bir klasörde (exe'nin yanı) ya da, klasör korunuyorsa, %AppData%\AltyaziCevirici
   içindedir. Kurulum sihirbazı bu dosyayı silmez.

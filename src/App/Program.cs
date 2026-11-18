@@ -5,8 +5,11 @@ namespace AltyaziCevirici;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Length >= 2 && args[0] == "--screenshots")
+            Environment.SetEnvironmentVariable("CEVIRMEN_SHOTS", Path.GetFullPath(args[1]));
+
         AppPaths.Init();
         ErrorLog.Path = AppPaths.ErrorLogFile;
         SozlukDosyasi.Yukle();
@@ -27,7 +30,7 @@ internal static class Program
         using var mutex = new Mutex(true, "AltyaziCevirici_TekOrnek", out bool first);
         if (!first)
         {
-            MessageBox.Show("Altyazı Çevirici zaten çalışıyor (saat yanındaki simgeye bak).", "Altyazı Çevirici",
+            MessageBox.Show(AppInfo.DisplayName + " zaten çalışıyor (saat yanındaki simgeye bak).", AppInfo.DisplayName,
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

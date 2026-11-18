@@ -1,6 +1,6 @@
-﻿#define MyAppName "Altyazı Çevirici"
+﻿#define MyAppName "Tercüman"
 #ifndef MyAppVersion
-#define MyAppVersion "1.4.0"
+#define MyAppVersion "1.5.0"
 #endif
 #define MyAppVersionInfo MyAppVersion + ".0"
 #define MyAppPublisher "Teo"
@@ -41,6 +41,8 @@ RestartApplications=no
 CloseApplicationsFilter={#MyAppExeName}
 InfoBeforeFile=onbilgi.txt
 ShowLanguageDialog=no
+; Refresh Explorer's icon cache at the end so shortcuts and the taskbar drop the old TR icon after an update.
+ChangesAssociations=yes
 
 [Languages]
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
@@ -57,6 +59,10 @@ Source: "..\KULLANIM.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
 [Icons]
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+
+[Registry]
+; "Windows açılınca başlat" (set from the app) is removed on uninstall. Setup itself does not create it.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "AltyaziCevirici"; ValueType: none; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
 ; Checkbox on the last page. Leaving it clear does not fail the install.
@@ -89,3 +95,11 @@ begin
       mbInformation, MB_OK);
   end;
 end;
+
+[InstallDelete]
+Type: files; Name: "{userdesktop}\Altyazı Çevirici.lnk"
+Type: files; Name: "{userprograms}\Altyazı Çevirici.lnk"
+Type: filesandordirs; Name: "{userprograms}\Altyazı Çevirici"
+Type: files; Name: "{userdesktop}\Çevirmen Samet.lnk"
+Type: files; Name: "{userprograms}\Çevirmen Samet.lnk"
+Type: filesandordirs; Name: "{userprograms}\Çevirmen Samet"
