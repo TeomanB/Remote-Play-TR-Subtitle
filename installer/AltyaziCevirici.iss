@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Altyazı Çevirici"
 #ifndef MyAppVersion
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.4.0"
 #endif
 #define MyAppVersionInfo MyAppVersion + ".0"
 #define MyAppPublisher "Teo"
@@ -23,6 +23,7 @@ DisableProgramGroupPage=yes
 ; Copying the exe into Program Files still works: the app falls back to %AppData%\AltyaziCevirici.
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=commandline
+UsePreviousTasks=no
 UsedUserAreasWarning=no
 OutputDir=..\artifacts
 OutputBaseFilename=AltyaziCevirici-Setup-{#MyAppVersion}
@@ -45,16 +46,17 @@ ShowLanguageDialog=no
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; GroupDescription: "Kısayollar:"; Flags: unchecked
+Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; GroupDescription: "Kısayollar:"
 Name: "ocrpack"; Description: "İngilizce yazı tanıma paketini şimdi kur (isteğe bağlı, yalnızca bu kutu işaretliyse yönetici izni ister)"; GroupDescription: "Metin tanıma:"; Flags: unchecked
 
 [Files]
 Source: "..\publish\AltyaziCevirici.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\data\packs\gta6.json"; DestDir: "{app}\data\packs"; Flags: ignoreversion
 Source: "..\KULLANIM.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
 ; Checkbox on the last page. Leaving it clear does not fail the install.

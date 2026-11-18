@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -46,11 +47,36 @@ public sealed class TermProtector
                      .OrderByDescending(g => g.Ingilizce.Trim().Length))
         {
             var en = g.Ingilizce.Trim();
-            var pattern = string.Join(@"\s+", en.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape));
-            var rx = new Regex($@"(?<![\p{{L}}\p{{N}}]){pattern}(?![\p{{L}}\p{{N}}])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             var tr = (g.Turkce ?? string.Empty).Trim();
-            _glossary.Add((rx, tr.Length == 0 ? en : tr));
+            var output = tr.Length == 0 ? en : tr;
+            AddPattern(Fold(en).Text, output);
+            // OCR often reads the dollar sign in "PTT Youngin$" as S.
+            if (en.Contains('$')) AddPattern(Fold(en.Replace("$", "S", StringComparison.Ordinal)).Text, output);
         }
+    }
+
+    private void AddPattern(string foldedTerm, string output)
+    {
+        var pattern = string.Join(@"\s+", foldedTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape));
+        var rx = new Regex($@"(?<![\p{{L}}\p{{N}}]){pattern}(?![\p{{L}}\p{{N}}])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        _glossary.Add((rx, output));
+    }
+
+    /// <summary>Strips accents so "Andrés" and "Andres" compare equal. Index map points back at the original string.</summary>
+    private static (string Text, int[] Map) Fold(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        var map = new List<int>(text.Length);
+        for (int i = 0; i < text.Length; i++)
+        {
+            foreach (var c in text[i].ToString().Normalize(NormalizationForm.FormD))
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+                sb.Append(c);
+                map.Add(i);
+            }
+        }
+        return (sb.ToString(), map.ToArray());
     }
 
     public bool IsEmpty => _glossary.Count == 0 && !_properNouns;
@@ -58,10 +84,16 @@ public sealed class TermProtector
     public Masked Protect(string text, bool startsMidSentence = false)
     {
         var spans = new List<(int Start, int Len, string Output)>();
+        var (folded, map) = Fold(text);
         foreach (var (rx, output) in _glossary)
-            foreach (Match m in rx.Matches(text))
-                if (!Overlaps(spans, m.Index, m.Length))
-                    spans.Add((m.Index, m.Length, output));
+            foreach (Match m in rx.Matches(folded))
+            {
+                if (m.Length == 0 || m.Index >= map.Length) continue;
+                int start = map[m.Index];
+                int end = map[m.Index + m.Length - 1] + 1;
+                if (!Overlaps(spans, start, end - start))
+                    spans.Add((start, end - start, output));
+            }
         if (_properNouns)
             foreach (var (s, l) in ProperNouns(text, startsMidSentence))
                 if (!Overlaps(spans, s, l)) spans.Add((s, l, text.Substring(s, l)));

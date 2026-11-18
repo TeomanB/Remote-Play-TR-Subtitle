@@ -14,7 +14,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private readonly OverlayForm _overlay;
     private readonly GoogleTranslator _translator = new();
     private readonly TranslationProcessor _processor;
-    private ControlCenterForm? _center;
+    private MainWindow? _center;
     private readonly ToolStripMenuItem _runItem;
     private readonly System.Windows.Forms.Timer _previewTimer = new() { Interval = 3500 };
     public event EventHandler? StateChanged;
@@ -80,7 +80,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     private void Start()
     {
-        _center = new ControlCenterForm(this);
+        _center = new MainWindow(this);
         _center.Show();
         YenidenYukleOcr();
         StateChanged?.Invoke(this, EventArgs.Empty);
@@ -165,6 +165,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
                 if (!_paused && _ocr != null)
                 {
                     string text = await _ocr.ReadAsync(region, _settings.BeyazYaziFiltresi, _settings.BeyazEsik).ConfigureAwait(false);
+                    if (!OcrGate.Kabul(text, _settings.HedefDil)) text = string.Empty;
                     pipeline.OnFrame(text, DateTime.UtcNow);
                 }
                 errors = 0;
@@ -295,7 +296,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     public void ShowMain()
     {
-        if (_center == null || _center.IsDisposed) _center = new ControlCenterForm(this);
+        if (_center == null || _center.IsDisposed) _center = new MainWindow(this);
         if (!_center.Visible) _center.Show();
         if (_center.WindowState == FormWindowState.Minimized) _center.WindowState = FormWindowState.Normal;
         _center.Activate();
@@ -395,6 +396,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.KutuX = e.KutuX;
         _settings.KutuY = e.KutuY;
         _settings.KutuGenislik = e.KutuGenislik;
+        _settings.KutuYukseklik = e.KutuYukseklik;
+        _settings.AcikPaketler = e.AcikPaketler?.ToList() ?? new List<string>(SozlukKutuphanesi.VarsayilanAcik);
         _settings.BagilX = e.BagilX;
         _settings.BagilY = e.BagilY;
         _settings.MonitorAdi = e.MonitorAdi;
@@ -452,7 +455,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         if (!_settings.HasRegion) { Balloon("Önce altyazı bölgesini seç (F8).", ToolTipIcon.Info); return; }
         _previewing = true;
         _overlay.Configure(Region, _settings);
-        _overlay.ShowText("Örnek çeviri: Siktir, Port Gellhorn'a geç kaldık!", false);
+        _overlay.ShowText(MainWindow.OrnekAltyazi, false);
         _previewTimer.Stop();
         _previewTimer.Start();
     }

@@ -1,8 +1,8 @@
 namespace AltyaziCevirici.Core;
 
-public enum TranslateStatus { Ok, RateLimited, Failed, Cancelled }
+public enum TranslateStatus { Ok, RateLimited, Failed, Cancelled, Skipped }
 
-public readonly record struct TranslateOutcome(TranslateStatus Status, string? Text = null, TimeSpan? RetryAfter = null);
+public readonly record struct TranslateOutcome(TranslateStatus Status, string? Text = null, TimeSpan? RetryAfter = null, string? Detected = null);
 
 public interface ITranslateBackend
 {
@@ -237,6 +237,16 @@ public sealed class TranslationScheduler : IDisposable
                     if (IsRelevant(req.Text) &&
                         (req.Seq > _shownSeq || (req.Seq == _shownSeq && _shownIsFallback)))
                         Show(req.Seq, req.Text, outcome.Text!, fallback: false);
+                    break;
+                case TranslateStatus.Skipped:
+                    _backoff = TimeSpan.Zero;
+                    _backoffUntil = DateTime.MinValue;
+                    if (IsRelevant(req.Text) && _visible)
+                    {
+                        _visible = false;
+                        _shownSeq = Math.Max(_shownSeq, req.Seq);
+                        SafeDisplay(new DisplayUpdate(DisplayKind.Hide, ++_displaySeq));
+                    }
                     break;
                 case TranslateStatus.Cancelled:
                     return; // whoever cancelled already decided what runs next

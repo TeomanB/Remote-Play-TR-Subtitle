@@ -1,0 +1,1071 @@
+{
+  "id": "gta6",
+  "ad": "GTA 6",
+  "aciklama": "Kaynak doğrulamalı paket. Ayrıntı: docs/packs/gta6-sources.md",
+  "entries": [
+    {
+      "term": "Jason Duval",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ana karakter; resmi karakter profili"
+    },
+    {
+      "term": "Jason",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ana karakter (mevcut listede de var)"
+    },
+    {
+      "term": "Lucia Caminos",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ana karakter; resmi karakter profili"
+    },
+    {
+      "term": "Lucia",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ana karakter (mevcut listede de var)"
+    },
+    {
+      "term": "Cal Hampton",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi karakter profili"
+    },
+    {
+      "term": "Cal",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Cal Hampton'ın ilk adı; resmi profil metninde tek başına geçiyor"
+    },
+    {
+      "term": "Boobie Ike",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi karakter profili"
+    },
+    {
+      "term": "Boobie",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi profil metninde tek başına geçiyor"
+    },
+    {
+      "term": "Dre'Quan Priest",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi karakter profili"
+    },
+    {
+      "term": "Dre'Quan",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi profil metninde tek başına geçiyor"
+    },
+    {
+      "term": "Real Dimez",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Rap ikilisi; resmi karakter profili"
+    },
+    {
+      "term": "Bae-Luxe",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Real Dimez üyesi; resmi profil"
+    },
+    {
+      "term": "Roxy",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Real Dimez üyesi; resmi profil"
+    },
+    {
+      "term": "Raul Bautista",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi karakter profili (bazı basın 'Batista' yazıyor; resmi yazım Bautista)"
+    },
+    {
+      "term": "Raul",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi profil metninde tek başına geçiyor"
+    },
+    {
+      "term": "Brian Heder",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi karakter profili"
+    },
+    {
+      "term": "Brian",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi profil metninde tek başına geçiyor"
+    },
+    {
+      "term": "Lori",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Brian'ın üçüncü eşi; resmi Brian Heder profili"
+    },
+    {
+      "term": "DWNPLY",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Yerel rapçi; resmi Real Dimez profili"
+    },
+    {
+      "term": "Wyman",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Koleksiyoncu/fixer; resmi Ultimate Edition 'Classic Car Collection' metni"
+    },
+    {
+      "term": "Tommy Vercetti",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition silah deseni metninde geçiyor (seri karakteri)"
+    },
+    {
+      "term": "Andrés de León",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://in.ign.com/grand-theft-auto-vi/270435/99-details-from-the-gta-6-extended-look",
+        "https://www.svg.com/2246139/gta-6-leonida-map-new-locations-extended-look/"
+      ],
+      "note": "Resmi metinde yok; Extended Look videosunda gösterildi, IGN ve SVG ikisi de bu adla yazıyor. Altyazıda aksansız 'Andres de Leon' çıkarsa eşleşmez"
+    },
+    {
+      "term": "DJ Kerry",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "DJ Tom",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Burna",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Palmsy",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Delta Dawne",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "El Martillo",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "La Gata",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Trick and Trina",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Robyn and Alex",
+      "type": "protect",
+      "tr": "",
+      "category": "character",
+      "sources": [
+        "https://www.rockstargames.com/VI/music",
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.pcgamer.com/games/grand-theft-auto/gta-6-characters/"
+      ],
+      "note": "Resmi Rockstar metni; radyo sunucusu (resmi müzik sayfası 'Hosted by ...')"
+    },
+    {
+      "term": "Leonida",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Eyalet (mevcut listede)"
+    },
+    {
+      "term": "Vice City",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Şehir (mevcut listede)"
+    },
+    {
+      "term": "Leonida Keys",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bölge (mevcut listede)"
+    },
+    {
+      "term": "Grassrivers",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bölge (mevcut listede)"
+    },
+    {
+      "term": "Port Gellhorn",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bölge (mevcut listede)"
+    },
+    {
+      "term": "Ambrosia",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bölge (mevcut listede)"
+    },
+    {
+      "term": "Mount Kalaga",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bölge (mevcut listede)"
+    },
+    {
+      "term": "Liberty City",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Lucia'nın ailesinin geldiği şehir; resmi Lucia profili"
+    },
+    {
+      "term": "Ocean Beach",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Vice City mahallesi; resmi Vice City metni ve Vintage Vice City Pack"
+    },
+    {
+      "term": "Little Cuba",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Vice City mahallesi; resmi Vice City metni"
+    },
+    {
+      "term": "Tisha-Wocka",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bit pazarı; resmi Vice City metni"
+    },
+    {
+      "term": "VC Port",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Liman; resmi Vice City metni"
+    },
+    {
+      "term": "Southside",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi metinde 'Southside Vice City' (PTT Youngin$ çetesinin bölgesi)"
+    },
+    {
+      "term": "Stockyard",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Mahalle; resmi Ultimate Edition metni (Stock 305, Electric Fang). Düz İngilizce 'stockyard' (hayvan ağılı) kelimesi de korunur, nadir"
+    },
+    {
+      "term": "Lake Leonida",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Ultimate Edition metni (One-Eyed Willie's)"
+    },
+    {
+      "term": "Watson Bay",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Ultimate Edition metni (Paradise Garage)"
+    },
+    {
+      "term": "Washington Beach",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Ultimate Edition metni (Shitzu Squalo)"
+    },
+    {
+      "term": "Gambit Bay",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Ultimate Edition metni (Shitzu Squalo)"
+    },
+    {
+      "term": "Shore Drive",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Grotti Cheetah ve Vapid Stanier metinleri"
+    },
+    {
+      "term": "Shore Court",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Garaj; resmi Vintage Vice City Pack metni"
+    },
+    {
+      "term": "Goodtime State",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Leonida'nın lakabı; resmi metin 'the Goodtime State'"
+    },
+    {
+      "term": "Mount Kalaga National Park",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; resmi tam ad"
+    },
+    {
+      "term": "Leonida Penitentiary",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Lucia'nın yattığı cezaevi"
+    },
+    {
+      "term": "Bayside",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://www.svg.com/2246139/gta-6-leonida-map-new-locations-extended-look/",
+        "https://www.gamesradar.com/news/live/gta-6-extended-look-showcase-live-coverage-2026-everything-announced/"
+      ],
+      "note": "Resmi metinde yok; Extended Look'ta Lucia söylüyor. SVG ve GamesRadar ikisi de doğruluyor"
+    },
+    {
+      "term": "Effluvia",
+      "type": "protect",
+      "tr": "",
+      "category": "location",
+      "sources": [
+        "https://in.ign.com/grand-theft-auto-vi/270435/99-details-from-the-gta-6-extended-look",
+        "https://www.svg.com/2246139/gta-6-leonida-map-new-locations-extended-look/"
+      ],
+      "note": "Çatı barı; Extended Look'ta tabelada görünüyor. IGN ve SVG doğruluyor"
+    },
+    {
+      "term": "Jack of Hearts",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Boobie'nin striptiz kulübü; resmi Boobie profili"
+    },
+    {
+      "term": "Only Raw Records",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Plak şirketi; resmi Boobie/Dre'Quan profilleri"
+    },
+    {
+      "term": "Paradise Garage",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Garaj; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Rideout Customs",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Modifiye dükkanı; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Sara's Unisex Salon",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Kuaför; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Stock 305",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Giyim mağazası; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Electric Fang Tattoo",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Dövme dükkanı; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "One-Eyed Willie's",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Modifiye dükkanı; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Goodtime Gear",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Mağaza; resmi Ultimate Edition metni"
+    },
+    {
+      "term": "Ocean View Hotel",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Otel; resmi Vintage Vice City Pack görsel açıklaması"
+    },
+    {
+      "term": "Delights Cabaret",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Kulüp; resmi Launch Gallery görsel açıklaması"
+    },
+    {
+      "term": "Rusty Anchor",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Bar; resmi Launch Gallery açıklaması 'The Rusty Anchor bar'"
+    },
+    {
+      "term": "Vercetti Estate",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Resmi Hawk & Little Morgan metni"
+    },
+    {
+      "term": "Megamundo",
+      "type": "protect",
+      "tr": "",
+      "category": "business",
+      "sources": [
+        "https://in.ign.com/grand-theft-auto-vi/270435/99-details-from-the-gta-6-extended-look",
+        "https://www.svg.com/2246139/gta-6-leonida-map-new-locations-extended-look/"
+      ],
+      "note": "Medya şirketi; Extended Look'ta. IGN ve SVG doğruluyor"
+    },
+    {
+      "term": "Fleeca",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Banka; resmi Launch Gallery açıklaması 'a Fleeca bank branch'"
+    },
+    {
+      "term": "Gruppe Sechs",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Güvenlik şirketi; resmi Launch Gallery açıklaması"
+    },
+    {
+      "term": "Sessanta Nove",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Moda markası; resmi Launch Gallery açıklaması"
+    },
+    {
+      "term": "S4S",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Zincir kolye markası; resmi Launch Gallery açıklaması"
+    },
+    {
+      "term": "Pegassi",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Araç markası; resmi Grotti Cheetah görsel açıklaması"
+    },
+    {
+      "term": "Grotti",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Araç markası; resmi metin"
+    },
+    {
+      "term": "Dinka",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Araç markası; resmi metin"
+    },
+    {
+      "term": "Shitzu",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Tekne markası; resmi metin"
+    },
+    {
+      "term": "Girardi",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Silah markası; resmi metin"
+    },
+    {
+      "term": "Klose",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Silah markası; resmi metin"
+    },
+    {
+      "term": "Macca the Gator",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Leonida'nın TV şovu karakteri; resmi metin"
+    },
+    {
+      "term": "Chunkee the Manatee",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/launch-gallery",
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Maskot; resmi Vice City Collection metni"
+    },
+    {
+      "term": "Flash FM",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfası"
+    },
+    {
+      "term": "Cocoteo FM",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfası"
+    },
+    {
+      "term": "AfroBank FM",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfası"
+    },
+    {
+      "term": "Afro Bank FM",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfasında bu yazımla da geçiyor"
+    },
+    {
+      "term": "Back Country Radio",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfası"
+    },
+    {
+      "term": "Dirty South Classics",
+      "type": "protect",
+      "tr": "",
+      "category": "brand_media",
+      "sources": [
+        "https://www.rockstargames.com/VI/music"
+      ],
+      "note": "Resmi Rockstar metni; Radyo; resmi müzik sayfası"
+    },
+    {
+      "term": "PTT Youngin$",
+      "type": "protect",
+      "tr": "",
+      "category": "gang",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Southside Vice City çetesi. OCR '$' yerine 's' okursa eşleşmez"
+    },
+    {
+      "term": "Vapid Stanier",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Stanier",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Grotti Cheetah",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Vapid Dominator",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Dinka Enduro",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Crest Kayak",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Shitzu Squalo",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Squalo",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Vapid Ganado",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Ganado",
+      "type": "protect",
+      "tr": "",
+      "category": "vehicle",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida",
+        "https://www.playstation.com/en-us/games/grand-theft-auto-vi/"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition / ön sipariş araç metni"
+    },
+    {
+      "term": "Girardi ES9",
+      "type": "protect",
+      "tr": "",
+      "category": "weapon",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition silah metni"
+    },
+    {
+      "term": "Klose K17",
+      "type": "protect",
+      "tr": "",
+      "category": "weapon",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition silah metni"
+    },
+    {
+      "term": "Little Morgan",
+      "type": "protect",
+      "tr": "",
+      "category": "weapon",
+      "sources": [
+        "https://www.rockstargames.com/VI/only-in-leonida"
+      ],
+      "note": "Resmi Rockstar metni; Ultimate Edition silah metni"
+    }
+  ]
+}

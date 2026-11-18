@@ -4,16 +4,16 @@
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösteren bir Windows tepsi uygulaması. PS Remote Play gibi pencerelerde seçtiğin bölgeyi Windows'un kendi metin tanımasıyla (`Windows.Media.Ocr`) okur ve ücretsiz Google Çeviri ucuyla (`translate.googleapis.com`, `client=gtx`) canlı çevirir.
 
-Sürüm **1.3.0**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir ayar yoktur. Özel isimler ve sözlük korunur.
+Sürüm **1.4.0**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir ayar yoktur. Özel isimler ve sözlük korunur.
 
 ## İndirme
 
-Hazır dosyalar [Releases](https://github.com/TeomanB/Remote-Play-TR-Subtitle/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.3.0` gibi bir sürüm oluşturulur veya güncellenir.
+Hazır dosyalar [Releases](https://github.com/TeomanB/Remote-Play-TR-Subtitle/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.4.0` gibi bir sürüm oluşturulur veya güncellenir.
 
 | Dosya | Ne işe yarar |
 | --- | --- |
-| `AltyaziCevirici-Setup-1.3.0.exe` | Kullanıcı hesabına kurulum. Yönetici gerekmez. Başlat menüsü kısayolu, isteğe bağlı masaüstü kısayolu ve kaldırıcı vardır. Kurulum dili Türkçedir. |
-| `AltyaziCevirici-Portable-1.3.0.zip` | Kurulumsuz kopya: `AltyaziCevirici.exe` ve `KULLANIM.txt`. |
+| `AltyaziCevirici-Setup-1.4.0.exe` | Kullanıcı hesabına kurulum. Yönetici gerekmez. Başlat menüsü ve masaüstü kısayolu (sessiz kurulumda da) ve kaldırıcı vardır. Kurulum dili Türkçedir. |
+| `AltyaziCevirici-Portable-1.4.0.zip` | Kurulumsuz kopya: `AltyaziCevirici.exe` ve `KULLANIM.txt`. |
 
 İlk açılışta SmartScreen uyarısı çıkabilir: **Ek bilgi** → **Yine de çalıştır**. Uygulama imzalı değildir.
 
@@ -21,11 +21,11 @@ Ayrıntılı adımlar `KULLANIM.txt` içindedir.
 
 ## İlk açılış
 
-Program bir kontrol merkeziyle açılır. Ekran kararmaz ve bölge seçimi kendiliğinden başlamaz. Kayıtlı bölge ve ayarlar durur; önizleme o bölgeyi gösterir.
+Program kenarlıksız bir kontrol merkeziyle açılır. Ortada seçili ekranın büyük önizlemesi vardır; kaynak seçimi onun hemen altındadır. Ekran kendiliğinden kararmaz.
 
-1. **Bölge Seç** ile altyazı şeridini işaretle.
-2. Büyük **Başlat** düğmesi okumayı ve çeviriyi açar. **Durdur** keser.
-3. Pencereyi kapatmak programı kapatmaz; tepsiye küçültür. Simge menüsünde **Göster** ve **Çıkış** vardır.
+1. Önizlemenin üstüne iki kutu çiz: **Orijinal altyazı bölgesi** (oyunun İngilizce yazısı) ve **Çeviri altyazı konumu** (Türkçe kutunun yeri). İkisi de sürüklenebilir, kenarlarından büyütülür ve kendiliğinden kaydolur. Tam ekran seçici yedek olarak durur.
+2. **Başlat** okumayı açar, **Durdur** keser. Yazı tipi, renk, dış çizgi ve opaklık değişince örnek cümle hem tuvalde hem gerçek katmanda güncellenir.
+3. Pencereyi kapatmak tepsiye küçültür. Tepsi simgesi konsol ikonudur; çalışırken yeşil, durunca gri bir nokta taşır.
 
 ## Yazı tanıma paketi
 
@@ -47,7 +47,7 @@ Koyu bir penceredir: solda kaynak ve bölge, ortada canlı önizleme, sağda sek
 
 - **Çeviri:** diller, isimleri koruma. Küfürler her zaman sansürsüzdür.
 - **Altyazı Görünümü:** yazı boyutu, arka plan opaklığı ve dış çizgi kaydırıcıları; renk. Değişiklik altyazıda hemen görünür.
-- **Sözlük:** ekrandaki İngilizce ad ve istediğin Türkçe. Sağ boşsa kelime kalır. Ekler düzeltilir (`Port Gellhorn'da`).
+- **Sözlük:** Genel, Argo/Küfür, Oyun terimleri ve İsimler/Yerler açık gelir. GTA 6, RDR2, The Last of Us, God of War ve Spider-Man isteğe bağlıdır. GTA 6 listesi `data/packs/gta6.json` dosyasındadır (102 doğrulanmış ad, kaynaklar `docs/packs/gta6-sources.md`). Kendi satırını ekleyebilir, JSON ile içe veya dışa aktarabilirsin.
 - **Kısayollar:** tuşlar, açılışta güncelleme denetimi ve **Güncellemeleri denetle**.
 
 **Altyazı konumunu düzenle** örnek yazıyı ekranda sürükletir ve kenarlarından genişletir. **Kaydet** konumu yazar. Önayarlar: Alt orta, Üst orta, Bölgenin altı, Bölgenin üstü. Kutu ekranın ortasına ve kenarlarına yapışır. Ekran listesinden monitör seçilir. **Altyazı bölgeyi takip etsin** kutuyu yakalama bölgesine bağlı tutar.

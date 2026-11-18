@@ -258,7 +258,9 @@ public class SettingsV12Tests
         Assert.Equal("tr", s.HedefDil);
         Assert.Equal("#FFFFFF", s.YaziRengi);
         Assert.Equal(65, s.ArkaPlanOpakligi);
-        Assert.NotEmpty(s.Sozluk!);
+        Assert.Empty(s.Sozluk!); // user list starts empty; built-in packs are separate
+        Assert.Contains("genel", s.AcikPaketler!);
+        Assert.DoesNotContain("gta6", s.AcikPaketler!);
         Assert.Equal(AppSettings.CurrentVersion, s.Surum);
     }
 

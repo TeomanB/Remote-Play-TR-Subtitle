@@ -11,9 +11,9 @@ public sealed class AppSettings
     public int RegionY { get; set; }
     public int RegionWidth { get; set; }
     public int RegionHeight { get; set; }
-    /// <summary>Settings schema version (0 = file from v1, 2 = v1.1, 3 = v1.2, 4 = v1.3).</summary>
+    /// <summary>Settings schema version (0 = file from v1, 2 = v1.1, 3 = v1.2, 4 = v1.3, 5 = v1.4).</summary>
     public int Surum { get; set; }
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
     public int Fps { get; set; } = 15;
     public bool BeyazYaziFiltresi { get; set; } = true;
     public int BeyazEsik { get; set; } = 170;
@@ -33,8 +33,10 @@ public sealed class AppSettings
     public int ArkaPlanOpakligi { get; set; } = 65;
     /// <summary>Extra vertical offset of the translation box in pixels (+ down, - up).</summary>
     public int DikeyKaydirma { get; set; }
-    /// <summary>User glossary. Null in old files → defaults.</summary>
+    /// <summary>User glossary entries. Null in old files becomes empty; built-in packs are separate.</summary>
     public List<SozlukGirdisi>? Sozluk { get; set; }
+    /// <summary>Enabled pack ids. Null → Genel, Argo, Oyun, İsimler. gta6 stays off until the user turns it on.</summary>
+    public List<string>? AcikPaketler { get; set; }
 
     // ---- v1.3 control center / free subtitle placement ----
     /// <summary>False keeps the v1.2 anchor (above, below, or over the region).</summary>
@@ -45,6 +47,8 @@ public sealed class AppSettings
     public int KutuY { get; set; }
     /// <summary>Subtitle box width. 0 = derive from the capture region.</summary>
     public int KutuGenislik { get; set; }
+    /// <summary>Subtitle box height drawn on the preview. 0 = measure from the text.</summary>
+    public int KutuYukseklik { get; set; }
     public int BagilX { get; set; }
     public int BagilY { get; set; }
     /// <summary>Outline thickness in pixels. 0 draws no outline.</summary>
@@ -60,11 +64,7 @@ public sealed class AppSettings
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
-    public static List<SozlukGirdisi> DefaultGlossary() => new()
-    {
-        new("Vice City"), new("Leonida"), new("Leonida Keys"), new("Port Gellhorn"), new("Grassrivers"),
-        new("Ambrosia"), new("Mount Kalaga"), new("Jason"), new("Lucia"),
-    };
+    public static List<SozlukGirdisi> DefaultGlossary() => new();
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -120,6 +120,7 @@ public sealed class AppSettings
         if (!Enum.IsDefined(OnAyar)) OnAyar = AltyaziOnAyar.Serbest;
         DisCizgi = Math.Clamp(DisCizgi, 0, 16);
         KutuGenislik = KutuGenislik < SubtitleLayout.MinWidth ? 0 : Math.Clamp(KutuGenislik, SubtitleLayout.MinWidth, 8000);
+        KutuYukseklik = KutuYukseklik <= 0 ? 0 : Math.Clamp(KutuYukseklik, 24, 800);
         KutuX = Math.Clamp(KutuX, -8000, 16000);
         KutuY = Math.Clamp(KutuY, -8000, 16000);
         BagilX = Math.Clamp(BagilX, -8000, 8000);
@@ -129,7 +130,10 @@ public sealed class AppSettings
         KaynakDil = CleanLang(KaynakDil, "en");
         HedefDil = CleanLang(HedefDil, "tr");
         if (!TryParseColor(YaziRengi, out _)) YaziRengi = "#FFFFFF";
-        Sozluk ??= DefaultGlossary();
+        Sozluk ??= new List<SozlukGirdisi>();
+        AcikPaketler ??= new List<string>(SozlukKutuphanesi.VarsayilanAcik);
+        AcikPaketler.RemoveAll(string.IsNullOrWhiteSpace);
+        for (int i = 0; i < AcikPaketler.Count; i++) AcikPaketler[i] = AcikPaketler[i].Trim().ToLowerInvariant();
         Sozluk.RemoveAll(g => g == null || string.IsNullOrWhiteSpace(g.Ingilizce));
         foreach (var g in Sozluk) { g.Ingilizce = g.Ingilizce.Trim(); g.Turkce = (g.Turkce ?? string.Empty).Trim(); }
     }
@@ -168,5 +172,5 @@ public sealed class AppSettings
         return true;
     }
 
-    public ProcessorOptions ToProcessorOptions() => new(KaynakDil, HedefDil, Sozluk?.Select(g => new SozlukGirdisi(g.Ingilizce, g.Turkce)).ToList(), OzelIsimleriKoru);
+    public ProcessorOptions ToProcessorOptions() => new(KaynakDil, HedefDil, SozlukKutuphanesi.Etkin(this), OzelIsimleriKoru);
 }
