@@ -26,6 +26,24 @@ public sealed class EkAlan
 
     public EkAlan Copy() => (EkAlan)MemberwiseClone();
 
+    /// <summary>Top-left hint area used the first time extra areas are empty. Ratios match the preview shots.</summary>
+    public static EkAlan VarsayilanIpucu(int srcX, int srcY, int srcW, int srcH) => new()
+    {
+        Id = "ipucu",
+        Ad = "İpucu",
+        Acik = true,
+        Renk = Palet[0],
+        RegionX = srcX + srcW * 3 / 100,
+        RegionY = srcY + srcH * 4 / 100,
+        RegionWidth = Math.Max(200, srcW * 26 / 100),
+        RegionHeight = Math.Max(36, srcH * 6 / 100),
+        KonumAyarlandi = true,
+        KutuX = srcX + srcW * 3 / 100,
+        KutuY = srcY + srcH * 16 / 100,
+        KutuGenislik = Math.Max(SubtitleLayout.MinWidth, srcW * 42 / 100),
+        KutuYukseklik = Math.Max(84, srcH * 12 / 100),
+    };
+
     public void Clamp(int index)
     {
         int i = Math.Clamp(index, 0, Adlar.Length - 1);

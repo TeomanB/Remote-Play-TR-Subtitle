@@ -60,7 +60,7 @@ internal sealed class PreviewStage : Control
     /// <summary>Box rectangle in this control's client pixels, including where the handles sit.</summary>
     public Rectangle BoxClient(int i)
     {
-        var f = ToClient(_box[i]);
+        var f = ToClient(Get(i));
         var r = Rectangle.Round(f);
         r.Inflate(10, 14);
         return r;
@@ -287,8 +287,27 @@ internal sealed class PreviewStage : Control
             return;
         }
         Select(box);
-        if (part == -3 || _locked[box]) return;
+        if (part == -3 || IsLocked(box)) return;
         Begin(box, part, e.Location, live: false);
+    }
+
+    /// <summary>Same path as a drag after the pointer has moved: lock-safe for extra ids 100 and 200.</summary>
+    public bool BeginDrag(int box, int part)
+    {
+        if (part == -3 || IsLocked(box) || Get(box).IsEmpty) return false;
+        _dragBox = box;
+        _dragPart = part;
+        _grabRect = Get(box);
+        _live = true;
+        return true;
+    }
+
+    /// <summary>Continues <see cref="BeginDrag"/> by source pixels, the same as a mouse move.</summary>
+    public void ContinueDrag(int dx, int dy)
+    {
+        if (_dragBox < 0) return;
+        Put(_dragBox, Apply(_grabRect, _dragPart, dx, dy, _dragBox));
+        Invalidate();
     }
 
     private void Begin(int box, int part, Point at, bool live)

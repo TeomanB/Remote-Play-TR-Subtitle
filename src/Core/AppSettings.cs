@@ -99,6 +99,9 @@ public sealed class AppSettings
     /// <summary>Extra capture areas (İpucu and similar). Empty for a settings file from before 1.5.2; the main strip is unchanged.</summary>
     public List<EkAlan>? EkAlanlar { get; set; }
 
+    /// <summary>The default İpucu area was offered once. Deleting it must not bring it back.</summary>
+    public bool IpucuVarsayilanEklendi { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
@@ -207,6 +210,21 @@ public sealed class AppSettings
             EkAlanlar[i].Clamp(i);
             if (!ids.Add(EkAlanlar[i].Id)) EkAlanlar[i].Id = "ek" + (i + 1);
         }
+    }
+
+    /// <summary>
+    /// Adds the top-left İpucu area when the list is still empty. Runs once per settings file.
+    /// A later delete stays deleted. Existing areas are left as they are.
+    /// </summary>
+    public bool YerlesikIpucu(int srcX, int srcY, int srcW, int srcH)
+    {
+        EnsureEkAlanlar();
+        if (IpucuVarsayilanEklendi) return false;
+        if (srcW < 40 || srcH < 40) return false;
+        IpucuVarsayilanEklendi = true;
+        if (EkAlanlar!.Count > 0) return true;
+        EkAlanlar.Add(EkAlan.VarsayilanIpucu(srcX, srcY, srcW, srcH));
+        return true;
     }
 
     private static string CleanTag(string? v)

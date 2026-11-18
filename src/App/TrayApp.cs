@@ -27,7 +27,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private long _lastLoopTicks = DateTime.UtcNow.Ticks;
     private int _recoveries;
     private SubtitlePipeline? _pipeline;
-    private long _lastAppliedSeq;
+    private readonly GosterKapisi _goster = new();
     private readonly Dictionary<string, OverlayForm> _ekOverlays = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _ekSeq = new(StringComparer.Ordinal);
     private readonly List<TranslationProcessor> _ekProcessors = new();
@@ -52,6 +52,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         else using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
         _settingsPath = AppPaths.SettingsFile;
         _settings = AppSettings.Load(_settingsPath);
+        var monitor = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
+        if (_settings.YerlesikIpucu(monitor.X, monitor.Y, monitor.Width, monitor.Height))
+            SaveSettings();
 
         _overlay = new OverlayForm();
         _goal = new OverlayForm();
@@ -167,6 +170,10 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         SyncEkOverlays();
         _pipeline?.Dispose();
         DisposeEkPipes();
+        // A new scheduler numbers displays from 1 again. Keeping the old high-water mark
+        // drops every later line, so the overlay stays empty while OCR and Google keep running.
+        _goster.Sifirla();
+        _ekSeq.Clear();
         _pipeline = main ? CreatePipeline() : null;
         var jobs = new List<(string Slot, Rectangle Region, SubtitlePipeline Pipe)>();
         if (main && _pipeline != null) jobs.Add(("main", Region, _pipeline));
@@ -249,7 +256,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
                     for (int i = 0; i < jobs.Count && i < texts.Length; i++)
                     {
                         string text = texts[i];
-                        if (!OcrGate.Kabul(text, _settings.HedefDil)) text = string.Empty;
+                        bool kabul = OcrGate.Kabul(text, _settings.HedefDil);
+                        TanilamaLog.Yaz("ocr", jobs[i].Slot + " " + (kabul ? "kabul" : "red") + " «" + text + "»");
+                        if (!kabul) text = string.Empty;
                         jobs[i].Pipe.OnFrame(text, DateTime.UtcNow);
                     }
                 }
@@ -356,15 +365,27 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     {
         try
         {
-            if (state is not DisplayUpdate u || u.Seq <= _lastAppliedSeq) return; // never apply stale updates
-            _lastAppliedSeq = u.Seq;
+            if (state is not DisplayUpdate u) return;
+            if (!_goster.Kabul(u.Seq))
+            {
+                TanilamaLog.Yaz("dusur", "seq=" + u.Seq + " son=" + _goster.Son + " «" + u.Shown + "»");
+                return;
+            }
             if (_previewing) { _previewing = false; _previewTimer.Stop(); }
-            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); _goal.HideText(); return; }
+            if (u.Kind == DisplayKind.Hide || _paused || _selecting)
+            {
+                string neden = u.Kind == DisplayKind.Hide ? "satir-bitti" : _paused ? "duraklat" : "bolge-sec";
+                TanilamaLog.Yaz("gizle", neden);
+                _overlay.HideText();
+                _goal.HideText();
+                return;
+            }
             bool objective = string.Equals(u.LineKind, "objective", StringComparison.OrdinalIgnoreCase);
             var box = objective ? _goal : _overlay;
             if (objective) ConfigureGoal();
             else _overlay.Configure(Region, _settings);
             _lastText = u.Shown ?? string.Empty;
+            TanilamaLog.Yaz("goster", (objective ? "gorev" : "konusma") + (u.IsFallback ? " yedek" : "") + " «" + _lastText + "»");
             box.ShowText(_lastText, u.IsFallback);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "overlay"); }
@@ -582,6 +603,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.GorevKutuGenislik = e.GorevKutuGenislik;
         _settings.GorevKutuYukseklik = e.GorevKutuYukseklik;
         _settings.EkAlanlar = e.EkAlanlar?.Select(a => a.Copy()).ToList() ?? new List<EkAlan>();
+        _settings.IpucuVarsayilanEklendi = e.IpucuVarsayilanEklendi;
         _settings.AcikPaketler = e.AcikPaketler?.ToList() ?? new List<string>(SozlukKutuphanesi.VarsayilanAcik);
         _settings.BagilX = e.BagilX;
         _settings.BagilY = e.BagilY;
