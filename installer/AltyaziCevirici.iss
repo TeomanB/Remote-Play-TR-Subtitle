@@ -71,29 +71,60 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifnotsilent
 
 [Code]
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure InstallOcrCapability;
 var
   ResultCode: Integer;
-  Params: String;
+  Script, Params: String;
+begin
+  Script := ExpandConstant('{tmp}\ocr-pack.ps1');
+  SaveStringToFile(Script,
+    '$ErrorActionPreference = ''Stop''' + #13#10 +
+    '$n = ''Language.OCR~~~en-US~0.0.1.0''' + #13#10 +
+    'try {' + #13#10 +
+    '  $s = (Get-WindowsCapability -Online -Name $n).State' + #13#10 +
+    '  if ($s -eq ''Installed'') { exit 0 }' + #13#10 +
+    '  $j = Start-Job -ScriptBlock { param($n) Add-WindowsCapability -Online -Name $n | Out-Null } -ArgumentList $n' + #13#10 +
+    '  if (-not (Wait-Job $j -Timeout 480)) { Stop-Job $j -ErrorAction SilentlyContinue; Remove-Job $j -Force -ErrorAction SilentlyContinue; exit 2 }' + #13#10 +
+    '  Receive-Job $j -ErrorAction SilentlyContinue | Out-Null' + #13#10 +
+    '  $ok = (Get-WindowsCapability -Online -Name $n).State -eq ''Installed''' + #13#10 +
+    '  Remove-Job $j -Force -ErrorAction SilentlyContinue' + #13#10 +
+    '  if ($ok) { exit 0 } else { exit 1 }' + #13#10 +
+    '} catch { exit 1 }' + #13#10,
+    False);
+
+  { Hidden on purpose: a visible PowerShell window looks like Setup has frozen. }
+  WizardForm.StatusLabel.Caption := 'İngilizce yazı tanıma paketi denetleniyor. Kurulu değilse indirilecek; bu birkaç dakika sürebilir…';
+  WizardForm.ProgressGauge.Style := npbstMarquee;
+  WizardForm.Update;
+
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + Script + '"';
+  if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+       Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    MsgBox('İngilizce yazı tanıma paketi yüklenmedi (yönetici izni verilmedi). Kurulum yine de tamamlandı. Programı açınca Gelişmiş sayfasındaki Kur ile yeniden deneyebilirsin.',
+      mbInformation, MB_OK);
+  end
+  else if ResultCode = 2 then
+  begin
+    MsgBox('İngilizce yazı tanıma paketi zaman aşımına uğradı. Kurulum yine de tamamlandı. Programı açınca Gelişmiş sayfasındaki Kur ile yeniden deneyebilirsin.',
+      mbInformation, MB_OK);
+  end
+  else if ResultCode <> 0 then
+  begin
+    MsgBox('İngilizce yazı tanıma paketi kurulamadı. Kurulum yine de tamamlandı. Programı açınca Gelişmiş sayfasındaki Kur ile yeniden deneyebilirsin.',
+      mbInformation, MB_OK);
+  end;
+  WizardForm.ProgressGauge.Style := npbstNormal;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep <> ssPostInstall then
     Exit;
   if not WizardIsTaskSelected('ocrpack') then
     Exit;
-
-  // Optional. A declined UAC prompt or a failed capability command must not roll back Setup.
-  Params := '-NoProfile -ExecutionPolicy Bypass -Command "Add-WindowsCapability -Online -Name ''Language.OCR~~~en-US~0.0.1.0''"';
-  if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-       Params, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode) then
-  begin
-    MsgBox('İngilizce yazı tanıma paketi yüklenmedi (yönetici izni verilmedi). Kurulum yine de tamamlandı. Programı açınca Kur ile yeniden deneyebilirsin.',
-      mbInformation, MB_OK);
-  end
-  else if ResultCode <> 0 then
-  begin
-    MsgBox('İngilizce yazı tanıma paketi kurulamadı. Kurulum yine de tamamlandı. Programı açınca Kur ile yeniden deneyebilirsin.',
-      mbInformation, MB_OK);
-  end;
+  { Optional. A declined UAC prompt, a timeout, or a failed capability command must not roll back Setup. }
+  InstallOcrCapability;
 end;
 
 [InstallDelete]

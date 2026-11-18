@@ -70,6 +70,60 @@ public static class ImageOps
         return true;
     }
 
+    /// <summary>Downsamples luminance of a sub-rectangle. <paramref name="dst"/> length is at least sx*sy.</summary>
+    public static void SampleRect(ReadOnlySpan<byte> bgra, int stride, int ox, int oy, int width, int height, Span<byte> dst, int sx, int sy)
+    {
+        for (int j = 0; j < sy; j++)
+        {
+            int y = oy + Math.Min(height - 1, (int)((j + 0.5) * height / sy));
+            int rowOff = y * stride;
+            for (int i = 0; i < sx; i++)
+            {
+                int x = ox + Math.Min(width - 1, (int)((i + 0.5) * width / sx));
+                int p = rowOff + x * 4;
+                dst[j * sx + i] = (byte)((bgra[p + 2] * 77 + bgra[p + 1] * 150 + bgra[p] * 29) >> 8);
+            }
+        }
+    }
+
+    /// <summary>Like <see cref="TryFindTextBox"/>, limited to a sub-rectangle. The box is relative to that rectangle.</summary>
+    public static bool TryFindTextBoxRect(ReadOnlySpan<byte> bgra, int stride, int ox, int oy, int width, int height, int threshold,
+        out PixelRect box, int pad = 8, int minPixels = 12)
+    {
+        box = default;
+        int minX = int.MaxValue, minY = int.MaxValue, maxX = -1, maxY = -1, count = 0;
+        int y1 = oy + height, x1 = ox + width;
+        for (int y = oy; y < y1; y++)
+        {
+            int rowOff = y * stride;
+            int rowCount = 0;
+            for (int x = ox; x < x1; x++)
+            {
+                int p = rowOff + x * 4;
+                byte b = bgra[p], g = bgra[p + 1], r = bgra[p + 2];
+                if (b >= threshold && g >= threshold && r >= threshold)
+                {
+                    rowCount++;
+                    int lx = x - ox;
+                    if (lx < minX) minX = lx;
+                    if (lx > maxX) maxX = lx;
+                }
+            }
+            if (rowCount > 0)
+            {
+                count += rowCount;
+                int ly = y - oy;
+                if (ly < minY) minY = ly;
+                maxY = ly;
+            }
+        }
+        if (count < minPixels || maxX < 0) return false;
+        int x0 = Math.Max(0, minX - pad), y0 = Math.Max(0, minY - pad);
+        int xr = Math.Min(width - 1, maxX + pad), yr = Math.Min(height - 1, maxY + pad);
+        box = new PixelRect(x0, y0, xr - x0 + 1, yr - y0 + 1);
+        return true;
+    }
+
     /// <summary>White-text threshold → Gray8 (text black on white), which Windows OCR reads best.</summary>
     public static void ThresholdWhite(ReadOnlySpan<byte> bgra, int width, int height, int stride, Span<byte> gray, int threshold)
     {

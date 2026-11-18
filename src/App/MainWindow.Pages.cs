@@ -20,6 +20,11 @@ internal sealed partial class MainWindow
     private readonly UiButton _resetBox = new() { Text = "Varsayılana döndür", Glyph = Ic.Reset };
     private readonly UiButton _pickRegion = new() { Text = "Ekranda işaretle (F8)", Glyph = Ic.Select, Kind = ButtonKind.Ghost };
     private readonly UiToggle _lockToggle = new();
+    private readonly AreaList _extraList = new();
+    private readonly UiButton _addArea = new() { Text = "Alan ekle", Glyph = Ic.Add };
+    private readonly UiButton _removeArea = new() { Text = "Sil", Kind = ButtonKind.Ghost };
+    private readonly UiInput _areaName = new() { Placeholder = "Alan adı" };
+    private readonly UiToggle _areaOn = new();
 
     // Görünüm
     private readonly UiDropdown _fontDrop = new();
@@ -69,7 +74,7 @@ internal sealed partial class MainWindow
         catch (Exception ex) { ErrorLog.Write(ex, "settings-reveal"); Notice("Ayar dosyası: " + AppPaths.SettingsFile); }
     }
 
-    private UiInput[] AllInputs() => new[] { _gx, _gy, _gw, _gh, _search, _termEn, _termTr };
+    private UiInput[] AllInputs() => new[] { _gx, _gy, _gw, _gh, _areaName, _search, _termEn, _termTr };
     private UiInput[] GeometryInputs() => new[] { _gx, _gy, _gw, _gh };
 
     private void BuildInspector()
@@ -98,8 +103,18 @@ internal sealed partial class MainWindow
         _resetBox.Click += (_, _) => ResetBox();
         _pickRegion.Click += (_, _) => _host.SelectRegion();
         _lockToggle.CheckedChanged += (_, _) => SetLock(_stage.Selected, _lockToggle.Checked);
+        _extraList.Chosen += (_, i) => { _stage.Select(PreviewStage.ExtraOverlay + i); SyncSelection(); };
+        _extraList.Toggled += (_, e) => SetExtraEnabled(e.Index, e.On);
+        _addArea.Click += (_, _) => AddExtra();
+        _removeArea.Click += (_, _) => RemoveExtra();
+        _areaName.Committed += (_, _) => RenameExtra(_areaName.Value);
+        _areaOn.CheckedChanged += (_, _) =>
+        {
+            int i = PreviewStage.ExtraIndexOf(_stage.Selected);
+            if (i >= 0) SetExtraEnabled(i, _areaOn.Checked);
+        };
 
-        _areasPage = new InspectorPage("Alanlar", "Seçili kutunun tam konumu ve boyutu.", (p, w, y) =>
+        _areasPage = new InspectorPage("Alanlar", "Ana şerit kutuları ve ek yakalama alanları.", (p, w, y) =>
         {
             InspectorPage.Put(_boxSeg, 0, y, w, Theme.D(34));
             y += Theme.D(34) + Theme.D(18);
@@ -119,9 +134,21 @@ internal sealed partial class MainWindow
             y += OptionBox(p, y, w, "Bu alanı kilitle", "Kilitliyken taşınmaz ve boyutlanmaz; tıklamalar alttaki kutuya geçer.", _lockToggle) + Theme.D(14);
             string src = _screen.Width.ToString(Inv) + " × " + _screen.Height.ToString(Inv);
             y += p.AddHint(y, w, "Kutular üst üste gelince seçili olan üstte kalır; diğerini seçmek için etiketine ya da yukarıdaki adına tıkla. Sayılar seçili kaynağın " + src + " görüntüsüne göredir.");
+            y = p.AddLabel(y, w, "Ek alanlar");
+            y += p.AddHint(y, w, "Köşedeki ipuçları için, örneğin sol üstteki “R3’e bas”. Her ek alanın kendi okuma bölgesi ve çeviri kutusu vardır. Ana şerit yukarıda kalır.");
+            int listH = Math.Max(AreaList.RowHeight, _extraList.Height);
+            InspectorPage.Put(_extraList, 0, y, w, listH);
+            y += listH + Theme.D(8);
+            int half = (w - Theme.D(8)) / 2;
+            InspectorPage.Put(_addArea, 0, y, half, Theme.D(34));
+            InspectorPage.Put(_removeArea, half + Theme.D(8), y, w - half - Theme.D(8), Theme.D(34));
+            y += Theme.D(34) + Theme.D(8);
+            InspectorPage.Put(_areaName, 0, y, w, fh);
+            y += fh + Theme.D(8);
+            y += OptionBox(p, y, w, "Bu alanı oku", "Kapalıyken bu bölge okunmaz ve çevirisi gizlenir.", _areaOn);
             return y;
         });
-        foreach (var c in new Control[] { _boxSeg, _gx, _gy, _gw, _gh, _resetBox, _pickRegion, _lockToggle }) _areasPage.Controls.Add(c);
+        foreach (var c in new Control[] { _boxSeg, _gx, _gy, _gw, _gh, _resetBox, _pickRegion, _lockToggle, _extraList, _addArea, _removeArea, _areaName, _areaOn }) _areasPage.Controls.Add(c);
     }
 
     /// <summary>Gray rounded option row with a title, explanation, and a switch on the right. Returns its height.</summary>
@@ -180,8 +207,14 @@ internal sealed partial class MainWindow
         int sel = _stage.Selected;
         if (_stage.IsLocked(sel)) return;
         var src = _stage.Source;
-        var r = sel == PreviewStage.Orig
+        Rectangle r = sel == PreviewStage.Orig
             ? new Rectangle(src.X + src.Width * 20 / 100, src.Y + src.Height * 79 / 100, src.Width * 60 / 100, src.Height * 95 / 1000)
+            : sel == PreviewStage.Goal
+            ? GoalDefault(src)
+            : sel >= PreviewStage.ExtraCapture && sel < PreviewStage.ExtraOverlay
+            ? new Rectangle(src.X + src.Width * 3 / 100, src.Y + src.Height * 4 / 100, src.Width * 28 / 100, Math.Max(40, src.Height * 8 / 100))
+            : sel >= PreviewStage.ExtraOverlay
+            ? new Rectangle(src.X + src.Width * 3 / 100, src.Y + src.Height * 14 / 100, Math.Max(SubtitleLayout.MinWidth, src.Width * 32 / 100), Math.Max(48, src.Height * 7 / 100))
             : new Rectangle(src.X + src.Width * 18 / 100, src.Y + src.Height * 635 / 1000, src.Width * 64 / 100, src.Height * 105 / 1000);
         _stage.SetBox(sel, Fit(r, src, sel));
         SaveRegions(showOverlay: true);
@@ -590,6 +623,9 @@ internal sealed partial class MainWindow
 
     private GuncellemeBilgisi? _offer;
     private bool _checking, _ocrInstalling;
+    private int _ocrDots;
+    private string _ocrStatus = "";
+    private System.Windows.Forms.Timer? _ocrPulse;
     private double _download = -1;
     private string _updateNote = "";
 
@@ -654,10 +690,13 @@ internal sealed partial class MainWindow
 
             bool missing = _host.OcrPaketiEksik;
             string code = OcrDilPaketi.Capability(cur.KaynakDil).Split('~')[3];
-            _ocrBtn.Visible = missing;
+            _ocrBtn.Visible = missing || _ocrInstalling;
             _ocrBtn.Text = _ocrInstalling ? "Kuruluyor…" : "Kur";
             _ocrBtn.Enabled = !_ocrInstalling;
-            y = Row(p, y, w, Ic.Globe, "OCR dil paketi", OcrDilPaketi.DilAdi(cur.KaynakDil) + " (" + code + ") · Windows OCR",
+            string ocrSub = _ocrInstalling
+                ? (_ocrStatus.Length > 0 ? _ocrStatus : "Yazı tanıma paketi indiriliyor, bu birkaç dakika sürebilir") + new string('·', (_ocrDots % 3) + 1)
+                : OcrDilPaketi.DilAdi(cur.KaynakDil) + " (" + code + ") · Windows OCR";
+            y = Row(p, y, w, Ic.Globe, "OCR dil paketi", ocrSub,
                 missing ? _ocrBtn : null, Theme.D(_ocrInstalling ? 104 : 64), (missing ? "Kurulu değil" : "Kurulu", missing ? BadgeKind.Warn : BadgeKind.Ok));
             p.AddDivider(y, w);
             y = Row(p, y, w, Ic.Font, "Altyazı dili", "Oyundaki altyazının dili. OCR bu dile göre okur.", null, 0, null);
@@ -769,20 +808,34 @@ internal sealed partial class MainWindow
     {
         if (_ocrInstalling) return;
         _ocrInstalling = true;
+        _ocrStatus = OcrDilPaketi.DilAdi(_host.Current.KaynakDil) + " yazı tanıma paketi indiriliyor, bu birkaç dakika sürebilir…";
+        _ocrPulse ??= new System.Windows.Forms.Timer { Interval = 700 };
+        _ocrPulse.Tick -= PulseOcr;
+        _ocrPulse.Tick += PulseOcr;
+        _ocrPulse.Start();
         RefreshAdvanced();
         try
         {
-            var (ok, mesaj) = await OcrPaketKur.KurAsync(_host.Current.KaynakDil).ConfigureAwait(true);
+            var progress = new Progress<string>(s => { _ocrStatus = s; if (!IsDisposed) RefreshAdvanced(); });
+            var (ok, mesaj) = await OcrPaketKur.KurAsync(_host.Current.KaynakDil, progress).ConfigureAwait(true);
             if (IsDisposed) return;
             if (!ok) { Notice(mesaj); return; }
+            if (mesaj.Length > 0) Notice(mesaj);
             if (!_host.YenidenYukleOcr())
                 Notice("Paket kuruldu. Tanıma açılmazsa " + AppInfo.DisplayName + "'ı kapatıp yeniden aç.");
         }
         finally
         {
             _ocrInstalling = false;
+            _ocrPulse?.Stop();
             if (!IsDisposed) { RefreshAdvanced(); RefreshStatus(); }
         }
+    }
+
+    private void PulseOcr(object? sender, EventArgs e)
+    {
+        _ocrDots++;
+        if (!IsDisposed && _ocrInstalling) RefreshAdvanced();
     }
 }
 

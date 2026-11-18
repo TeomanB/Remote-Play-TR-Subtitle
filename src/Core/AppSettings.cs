@@ -96,6 +96,9 @@ public sealed class AppSettings
     public int GorevKutuGenislik { get; set; }
     public int GorevKutuYukseklik { get; set; }
 
+    /// <summary>Extra capture areas (İpucu and similar). Empty for a settings file from before 1.5.2; the main strip is unchanged.</summary>
+    public List<EkAlan>? EkAlanlar { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
 
@@ -189,6 +192,21 @@ public sealed class AppSettings
         SadeceHazirPaket ??= new List<string>();
         SadeceHazirPaket.RemoveAll(string.IsNullOrWhiteSpace);
         for (int i = 0; i < SadeceHazirPaket.Count; i++) SadeceHazirPaket[i] = SadeceHazirPaket[i].Trim();
+        EnsureEkAlanlar();
+    }
+
+    /// <summary>Keeps at most <see cref="EkAlan.EnFazla"/> extra areas. Does not touch the main strip.</summary>
+    public void EnsureEkAlanlar()
+    {
+        EkAlanlar ??= new List<EkAlan>();
+        EkAlanlar.RemoveAll(a => a == null);
+        if (EkAlanlar.Count > EkAlan.EnFazla) EkAlanlar.RemoveRange(EkAlan.EnFazla, EkAlanlar.Count - EkAlan.EnFazla);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < EkAlanlar.Count; i++)
+        {
+            EkAlanlar[i].Clamp(i);
+            if (!ids.Add(EkAlanlar[i].Id)) EkAlanlar[i].Id = "ek" + (i + 1);
+        }
     }
 
     private static string CleanTag(string? v)

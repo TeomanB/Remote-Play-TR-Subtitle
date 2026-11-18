@@ -34,6 +34,7 @@ public sealed class TranslationScheduler : IDisposable
     private readonly Action<DisplayUpdate> _onDisplay;
     private readonly Func<DateTime> _clock;
     private readonly TimeSpan _minSpacing;
+    private readonly TimeSpan _callTimeout;
     private readonly object _lock = new();
 
     private long _seq;
@@ -59,13 +60,14 @@ public sealed class TranslationScheduler : IDisposable
     public static readonly TimeSpan ErrorBackoffMax = TimeSpan.FromSeconds(15);
 
     public TranslationScheduler(ITranslateBackend backend, TranslationCache cache, Action<DisplayUpdate> onDisplay,
-        Func<DateTime>? clock = null, TimeSpan? minSpacing = null)
+        Func<DateTime>? clock = null, TimeSpan? minSpacing = null, TimeSpan? callTimeout = null)
     {
         _backend = backend;
         _cache = cache;
         _onDisplay = onDisplay;
         _clock = clock ?? (() => DateTime.UtcNow);
         _minSpacing = minSpacing ?? TimeSpan.FromMilliseconds(60);
+        _callTimeout = callTimeout ?? TimeSpan.FromSeconds(8);
     }
 
     // ---- diagnostics for tests ----
@@ -199,7 +201,25 @@ public sealed class TranslationScheduler : IDisposable
         InterlockedMax(ref _maxConcurrent, c);
         try
         {
-            outcome = await _backend.TranslateAsync(req.Text, req.Cts.Token).ConfigureAwait(false);
+            var work = _backend.TranslateAsync(req.Text, req.Cts.Token);
+            if (_callTimeout > TimeSpan.Zero && _callTimeout != Timeout.InfiniteTimeSpan)
+            {
+                using var timeout = new CancellationTokenSource(_callTimeout);
+                var gate = Task.Delay(_callTimeout, timeout.Token);
+                var finished = await Task.WhenAny(work, gate).ConfigureAwait(false);
+                if (finished == work)
+                {
+                    timeout.Cancel();
+                    _ = gate.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                    outcome = await work.ConfigureAwait(false);
+                }
+                else
+                {
+                    _ = work.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                    outcome = new TranslateOutcome(TranslateStatus.Cancelled);
+                }
+            }
+            else outcome = await work.ConfigureAwait(false);
             if (req.Cts.IsCancellationRequested && outcome.Status != TranslateStatus.Ok)
                 outcome = new TranslateOutcome(TranslateStatus.Cancelled);
         }
@@ -225,7 +245,8 @@ public sealed class TranslationScheduler : IDisposable
     {
         lock (_lock)
         {
-            if (_inflight == req) _inflight = null;
+            bool stillOurs = _inflight == req;
+            if (stillOurs) _inflight = null;
             if (_disposed) return;
             var now = _clock();
             switch (outcome.Status)
@@ -249,7 +270,14 @@ public sealed class TranslationScheduler : IDisposable
                     }
                     break;
                 case TranslateStatus.Cancelled:
-                    return; // whoever cancelled already decided what runs next
+                    // A replaced in-flight call already decided the next step. A call that timed out
+                    // while it was still the current one must be retried, or that line never translates.
+                    if (stillOurs && IsRelevant(req.Text))
+                    {
+                        if (req.Seq > _shownSeq) Show(req.Seq, req.Text, req.Text, fallback: true);
+                        _needsRetry = _latest != null;
+                    }
+                    return;
                 default:
                     bool limited = outcome.Status == TranslateStatus.RateLimited;
                     var start = limited ? RateLimitBackoffStart : ErrorBackoffStart;
