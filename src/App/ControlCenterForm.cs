@@ -60,7 +60,7 @@ internal sealed class ControlCenterForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1100, 700);
         MinimumSize = new Size(900, 560);
-        try { Icon = IconFactory.Create(); } catch (Exception) { /* default */ }
+        try { Icon = IconFactory.Window(); } catch (Exception) { /* default */ }
 
         Controls.Add(BuildBody());
         Controls.Add(BuildOcrBanner());

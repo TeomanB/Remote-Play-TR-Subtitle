@@ -1,5 +1,7 @@
 # Altyazı Çevirici
 
+<img src="assets/icon.png" alt="Altyazı Çevirici" width="128">
+
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösteren bir Windows tepsi uygulaması. PS Remote Play gibi pencerelerde seçtiğin bölgeyi Windows'un kendi metin tanımasıyla (`Windows.Media.Ocr`) okur ve ücretsiz Google Çeviri ucuyla (`translate.googleapis.com`, `client=gtx`) canlı çevirir.
 
 Sürüm **1.3.0**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir ayar yoktur. Özel isimler ve sözlük korunur.

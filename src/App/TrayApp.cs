@@ -24,7 +24,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private long _lastAppliedSeq;
     private DateTime _lastNetUse = DateTime.UtcNow;
     private readonly SynchronizationContext _ui;
-    private readonly Icon _icon;
+    private Icon _icon;
 
     private OcrCapture? _ocr;
     private CancellationTokenSource? _loopCts;
@@ -60,7 +60,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Çıkış (F10)", null, (_, _) => SafeRun(Quit, "quit")));
 
-        _icon = IconFactory.Create();
+        _icon = IconFactory.Tray(false);
         _tray = new NotifyIcon { Icon = _icon, Text = AppName, ContextMenuStrip = menu, Visible = true };
         _tray.DoubleClick += (_, _) => SafeRun(ShowMain, "show");
 
@@ -282,6 +282,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             _resetRequested = true;
         }
         Balloon(_paused ? "Duraklatıldı. Devam için F9." : "Devam ediyor.", ToolTipIcon.None);
+        ApplyTrayIcon();
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -337,6 +338,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _pauseItem.Text = "Duraklat (F9)";
         StartLoop();
         _runItem.Text = "Durdur";
+        ApplyTrayIcon();
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -345,7 +347,18 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         StopLoop();
         _overlay.HideText();
         _runItem.Text = "Başlat";
+        ApplyTrayIcon();
         StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ApplyTrayIcon()
+    {
+        if (_quitting || _tray == null) return;
+        var next = IconFactory.Tray(IsRunning && !_paused);
+        _tray.Icon = next;
+        var old = _icon;
+        _icon = next;
+        if (old != null && !ReferenceEquals(old, next)) old.Dispose();
     }
 
     public void BeginPlacementEdit()

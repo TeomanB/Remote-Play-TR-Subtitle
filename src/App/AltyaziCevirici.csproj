@@ -30,4 +30,12 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\AltyaziCevirici.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico">
+      <LogicalName>AltyaziCevirici.app.ico</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\icon.png">
+      <LogicalName>AltyaziCevirici.icon.png</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>
