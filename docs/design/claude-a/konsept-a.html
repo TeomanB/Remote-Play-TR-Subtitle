@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=1280">
+<title>Altyazı Çevirici · Konsept A (Stüdyo)</title>
+<style>
+:root{
+  --acc:#14B8B2;--acc-d:#0A8480;--acc-dd:#086E6B;--acc-t:#E4F7F6;--acc-t2:#C8EEEC;
+  --bg:#F3F5F7;--card:#fff;--line:rgba(15,30,45,.08);--line2:rgba(15,30,45,.16);
+  --tx:#17212B;--tx2:#566371;--tx3:#8793A0;
+  --ok:#15803D;--ok-t:#E7F6EC;--warn:#B45309;--warn-t:#FDF1DC;--red:#B42318;
+  --sh1:0 1px 2px rgba(15,30,45,.06),0 2px 10px rgba(15,30,45,.05);
+  --sh2:0 12px 36px rgba(15,30,45,.16),0 2px 8px rgba(15,30,45,.08);
+  --sub-font:'Segoe UI Variable Display','Segoe UI',sans-serif;--sub-size:44;--sub-color:#FFFFFF;--sub-outline:#000000;--sub-ow:3;--sub-bg:.45;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;min-height:100vh;display:flex;background:#D9DFE5;color:var(--tx);
+  font:14px/1.45 'Segoe UI Variable Text','Segoe UI Variable','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+h1{font:600 22px/1.2 'Segoe UI Variable Display','Segoe UI',sans-serif;letter-spacing:-.01em}
+h2{font:600 16px/1.3 'Segoe UI Variable Display','Segoe UI',sans-serif}
+h3{font-size:13px;font-weight:600}
+small{font-size:12px;color:var(--tx2)}
+button,input,select{font:inherit;color:inherit}
+.app{width:1280px;height:800px;flex:none;margin:auto;background:var(--bg);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,30,45,.25)}
+.ico{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.ico.sm{width:16px;height:16px}
+.sp{flex:1}
+.muted{color:var(--tx2)}
+
+/* başlık çubuğu */
+.titlebar{height:40px;flex:none;display:flex;align-items:center;gap:10px;padding-left:14px;font-size:12.5px;color:var(--tx2);background:var(--bg);position:relative;z-index:30}
+.tb-ico{width:20px;height:20px}
+.tb-btns{margin-left:auto;display:flex;height:100%}
+.tb-btns button{width:46px;border:0;background:none;display:grid;place-items:center;color:var(--tx2)}
+.tb-btns button:hover{background:rgba(15,30,45,.06)}
+.tb-btns button:last-child:hover{background:#C42B1C;color:#fff}
+.tb-btns .ico{width:16px;height:16px;stroke-width:1.2}
+
+/* temel bileşenler */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh1)}
+.btn{height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--line2);background:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,transform .08s}
+.btn:hover{background:#F6F8FA}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--acc-d);border-color:var(--acc-d);color:#fff;box-shadow:0 1px 2px rgba(8,110,107,.3)}
+.btn.primary:hover{background:var(--acc-dd)}
+.btn.ghost{border-color:transparent;background:none;color:var(--tx2)}
+.btn.ghost:hover{background:rgba(15,30,45,.06)}
+.btn.icon{width:34px;padding:0}
+.btn.lg{height:44px;padding:0 22px;font-size:15px;border-radius:10px}
+.run .i-stop{display:none}
+.run .ico{fill:currentColor;stroke:none}
+body.running .run{background:#fff;border-color:#EFC4BF;color:var(--red);box-shadow:none}
+body.running .run:hover{background:#FEF3F2}
+body.running .run .i-play{display:none}
+body.running .run .i-stop{display:block}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+.input,.select{height:34px;border:1px solid var(--line2);border-radius:8px;background:#fff;padding:0 10px;font-size:13px;min-width:0;width:100%}
+.input:focus,.select:focus,.num:focus-within,.search:focus-within{outline:none;border-color:var(--acc-d);box-shadow:0 0 0 3px var(--acc-t2)}
+.select{appearance:none;padding-right:30px;cursor:pointer;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23566371' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E") no-repeat right 10px center}
+input[type=range]{width:100%;accent-color:var(--acc-d);height:20px;margin:0;cursor:pointer}
+.switch{position:relative;display:inline-block;width:40px;height:22px;flex:none;cursor:pointer}
+.switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.switch i{position:absolute;inset:0;border-radius:11px;background:#fff;border:1.5px solid #8A96A3;transition:.15s}
+.switch i::after{content:"";position:absolute;left:3px;top:3px;width:13px;height:13px;border-radius:50%;background:#5B6876;transition:.15s}
+.switch input:checked+i{background:var(--acc-d);border-color:var(--acc-d)}
+.switch input:checked+i::after{left:21px;background:#fff}
+.seg{display:flex;background:#E9EDF1;border-radius:9px;padding:3px;gap:2px}
+.seg button{flex:1;height:28px;border:0;background:none;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--tx2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.active{background:#fff;color:var(--tx);box-shadow:0 1px 3px rgba(15,30,45,.14)}
+.key{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+.key.o{background:#F5A524}.key.t{background:var(--acc)}
+.badge{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:11px;font-size:11.5px;font-weight:600;white-space:nowrap;flex:none;background:#EDF0F3;color:var(--tx2)}
+.badge.ok{background:var(--ok-t);color:var(--ok)}
+.badge.warn{background:var(--warn-t);color:var(--warn)}
+.dot{width:8px;height:8px;border-radius:50%;background:#A6B0BA;flex:none}
+body.running .dot{background:#16A34A;box-shadow:0 0 0 4px rgba(22,163,74,.18);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(22,163,74,0)}}
+
+/* form */
+.form{display:flex;flex-direction:column;gap:18px}
+.field{display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12.5px;font-weight:600;color:var(--tx2);display:flex;justify-content:space-between;align-items:center}
+.lbl b{color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums}
+.swatches{display:flex;gap:8px;align-items:center}
+.sw{width:28px;height:28px;border-radius:50%;border:1px solid var(--line2);background:var(--c);cursor:pointer;padding:0;position:relative}
+.sw.active{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--acc-d)}
+.sw.pick{overflow:hidden;background:conic-gradient(#f43,#fc3,#3c6,#3cf,#63f,#f3c,#f43)}
+.sw.pick input{position:absolute;inset:-8px;width:50px;height:50px;opacity:0;cursor:pointer}
+.geo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.num{display:flex;align-items:center;height:34px;border:1px solid var(--line2);border-radius:8px;background:#fff;overflow:hidden}
+.num span{width:30px;text-align:center;font-size:12px;font-weight:600;color:var(--tx3);border-right:1px solid var(--line);align-self:stretch;display:grid;place-items:center;background:#FAFBFC}
+.num input{border:0;outline:0;width:100%;min-width:0;padding:0 8px;font-size:13px;font-variant-numeric:tabular-nums;background:none}
+.num em{font-style:normal;font-size:11px;color:var(--tx3);padding-right:8px}
+.hint{display:flex;gap:10px;padding:12px;border-radius:10px;background:var(--acc-t);color:#0B4F4D;font-size:12.5px;line-height:1.45}
+.hint .ico{color:var(--acc-d);margin-top:1px}
+
+/* liste / sözlük */
+.dict{display:flex;flex-direction:column;gap:10px}
+.search{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid var(--line2);border-radius:9px;background:#fff;color:var(--tx3)}
+.search input{border:0;outline:0;flex:1;min-width:0;background:none;color:var(--tx);font-size:13px}
+.sec-h{font-size:11.5px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin-top:8px}
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.tile{width:32px;height:32px;border-radius:9px;background:var(--c,#EDF0F3);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;flex:none;letter-spacing:.02em}
+.li-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.li-t b{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.term:last-child{border-bottom:0}
+.term span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.term span+.ico+span{font-weight:600}
+.term .ico{color:var(--tx3)}
+.term-form{display:flex;align-items:center;gap:6px}
+.term-form .ico{color:var(--tx3)}
+.empty{padding:10px 0;font-size:12.5px;color:var(--tx3)}
+.opt{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:#F6F8FA;border:1px solid var(--line);margin-top:6px}
+.opt>span:first-child{flex:1;display:flex;flex-direction:column;line-height:1.35}
+.hist{display:flex;flex-direction:column}
+.hist div{padding:9px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;line-height:1.35}
+.hist div:last-child{border-bottom:0}
+.hist b{font-weight:600;font-size:13px}
+.opt b{font-weight:600;font-size:13px}
+
+/* gelişmiş */
+.set{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.set:first-child{padding-top:0}
+.set:last-child{border-bottom:0;padding-bottom:0}
+.set-i{width:36px;height:36px;border-radius:10px;background:var(--acc-t);color:var(--acc-d);display:grid;place-items:center;flex:none}
+.set-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.35}
+.set-t b{font-weight:600;font-size:13px}
+.set-t .badge{align-self:flex-start;margin-top:3px}
+.bar{height:4px;border-radius:2px;background:#E3E8EC;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:var(--acc-d);transition:width 1.8s ease-in-out}
+
+/* kaynak çubuğu */
+.source{display:flex;align-items:center;gap:10px}
+.source label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--tx2);font-weight:600}
+.source .select{width:210px}
+.source label+label .select{width:190px}
+
+/* sahne + kutular */
+.stage{position:relative;overflow:hidden;background:#1B1530;user-select:none;--k:.4}
+.scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.game-sub{position:absolute;left:50%;top:83.7%;transform:translate(-50%,-50%);white-space:nowrap;color:#fff;font:600 calc(34*var(--k)*1px)/1.2 'Segoe UI',sans-serif;text-shadow:0 calc(2*var(--k)*1px) calc(5*var(--k)*1px) rgba(0,0,0,.95),0 0 calc(2*var(--k)*1px) #000;pointer-events:none}
+.box{position:absolute;border:2px dashed var(--bc);border-radius:8px;cursor:move;touch-action:none;transition:opacity .2s}
+.box-orig{--bc:#FFB020}.box-trans{--bc:#35E0D8}
+.box.selected{border-style:solid;z-index:2;box-shadow:0 0 0 4px color-mix(in srgb,var(--bc) 32%,transparent),0 0 0 1px rgba(0,0,0,.35) inset}
+.box:not(.selected){border-width:1.5px}
+.box:not(.selected) .box-tag{background:color-mix(in srgb,var(--bc) 70%,#1B1530);left:-1.5px}
+.box-tag{position:absolute;left:-2px;bottom:100%;margin-bottom:5px;background:var(--bc);color:#0E1F29;font:600 11px/1 'Segoe UI',sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:4px}
+.tag-lock{width:11px;height:11px;stroke-width:2;display:none}
+.box.locked{pointer-events:none;border-style:solid;cursor:default}
+.box.locked:not(.selected){opacity:.75}
+.box.locked .box-tag{pointer-events:auto}
+.box.locked .tag-lock{display:block}
+.num:has(input:disabled){background:#F3F5F7;opacity:.6}
+.box-body{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:6px;overflow:hidden}
+.box-trans .box-body{background:rgba(0,0,0,var(--sub-bg))}
+.sub-tr{--o:calc(var(--sub-ow)*var(--k)*1px);--oc:var(--sub-outline);font-family:var(--sub-font);font-weight:600;font-size:calc(var(--sub-size)*var(--k)*1px);color:var(--sub-color);text-align:center;line-height:1.15;padding:0 .4em;
+  text-shadow:var(--o) 0 0 var(--oc),calc(var(--o)*-1) 0 0 var(--oc),0 var(--o) 0 var(--oc),0 calc(var(--o)*-1) 0 var(--oc),var(--o) var(--o) 0 var(--oc),calc(var(--o)*-1) var(--o) 0 var(--oc),var(--o) calc(var(--o)*-1) 0 var(--oc),calc(var(--o)*-1) calc(var(--o)*-1) 0 var(--oc)}
+.h{position:absolute;width:11px;height:11px;background:#fff;border:2px solid var(--bc);border-radius:3px;display:none}
+.box.selected:not(.locked) .h{display:block}
+.h-nw{left:-7px;top:-7px;cursor:nwse-resize}.h-se{right:-7px;bottom:-7px;cursor:nwse-resize}
+.h-ne{right:-7px;top:-7px;cursor:nesw-resize}.h-sw{left:-7px;bottom:-7px;cursor:nesw-resize}
+.h-n{left:calc(50% - 5.5px);top:-7px;cursor:ns-resize}.h-s{left:calc(50% - 5.5px);bottom:-7px;cursor:ns-resize}
+.h-w{top:calc(50% - 5.5px);left:-7px;cursor:ew-resize}.h-e{top:calc(50% - 5.5px);right:-7px;cursor:ew-resize}
+.ministage .box{pointer-events:none;border-width:1.5px}
+.ministage .h,.ministage .box-tag{display:none!important}
+
+.scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:#C5CDD5 transparent}
+
+/* ---- Konsept A: sol menü + önizleme + inceleme paneli ---- */
+.a-body{flex:1;display:grid;grid-template-columns:188px 1fr 308px;min-height:0}
+.a-nav{padding:4px 10px 14px 12px;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 14px}
+.brand svg{width:38px;height:38px}
+.brand b{display:block;font:600 14px/1.2 'Segoe UI Variable Display','Segoe UI',sans-serif}
+.nav{height:38px;border:0;background:none;border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:13.5px;font-weight:500;color:var(--tx2);cursor:pointer;position:relative;text-align:left}
+.nav:hover{background:rgba(15,30,45,.05)}
+.nav.active{background:#fff;color:var(--tx);font-weight:600;box-shadow:var(--sh1)}
+.nav.active::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--acc)}
+.nav.active .ico{color:var(--acc-d)}
+.a-status{padding:14px;display:flex;flex-direction:column;gap:12px}
+.a-status .r{display:flex;align-items:center;gap:9px;font-weight:600}
+.a-status .kv{display:flex;justify-content:space-between;font-size:12.5px;color:var(--tx2)}
+.a-status .kv b{color:var(--tx);font-variant-numeric:tabular-nums}
+.a-status .btn{width:100%}
+.a-main{padding:4px 16px 16px 6px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.a-head{display:flex;align-items:flex-end;gap:16px;padding:0 4px}
+.a-head p{color:var(--tx2);font-size:13px;margin-top:2px}
+.legend{display:flex;gap:6px}
+.legend{gap:8px}
+.chipgrp{display:flex;height:30px;border:1px solid var(--line2);border-radius:15px;background:#fff;overflow:hidden}
+.chipgrp:has(.chip.active){border-color:var(--acc-d);box-shadow:0 0 0 3px var(--acc-t2)}
+.chip{padding:0 10px 0 12px;border:0;background:none;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--tx2);white-space:nowrap}
+.chip.active{color:var(--tx)}
+.chip:hover,.lk:hover{background:rgba(15,30,45,.05)}
+.lk{width:32px;border:0;border-left:1px solid var(--line);background:none;display:grid;place-items:center;color:var(--tx3);cursor:pointer}
+.lk .l{display:none}
+.lk.on{background:var(--acc-t);color:var(--acc-dd)}
+.lk.on .l{display:block}.lk.on .u{display:none}
+.preview{padding:8px}
+.preview .stage{aspect-ratio:16/9;border-radius:8px}
+.srcbar{padding:10px 14px;display:flex;align-items:center;gap:12px}
+.lastcard{flex:1;min-height:0;padding:12px 16px;display:flex;align-items:center;gap:14px}
+.lastcard .set-i{background:var(--acc-t)}
+.lastcard .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.lastcard .t b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lastcard .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-insp{margin:4px 14px 16px 0;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.a-insp section{padding:18px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:0}
+.a-insp header p{color:var(--tx2);font-size:12.5px;margin-top:3px}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27286B"/><stop offset=".45" stop-color="#9A3F8F"/><stop offset=".8" stop-color="#FF8A5B"/><stop offset="1" stop-color="#FFD28C"/></linearGradient>
+  <radialGradient id="g-sun"><stop offset="0" stop-color="#FFF6D0"/><stop offset=".45" stop-color="#FFD98A" stop-opacity=".7"/><stop offset="1" stop-color="#FFB36B" stop-opacity="0"/></radialGradient>
+  <linearGradient id="g-road" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57407A"/><stop offset="1" stop-color="#1E1830"/></linearGradient>
+  <g id="palm" fill="none" stroke="#160F2A" stroke-linecap="round">
+    <path d="M0 0C-8-70 2-140 14-200" stroke-width="10"/>
+    <g stroke-width="8"><path d="M14-200q-55-34-100 4"/><path d="M14-200q-40-58-92-50"/><path d="M14-200q-6-62-46-84"/><path d="M14-200q28-58 72-62"/><path d="M14-200q56-36 104-6"/><path d="M14-200q48-6 82 40"/><path d="M14-200q-44 0-74 44"/></g>
+  </g>
+</defs>
+<symbol id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <rect width="1600" height="600" fill="url(#g-sky)"/>
+  <circle cx="1060" cy="520" r="260" fill="url(#g-sun)"/><circle cx="1060" cy="520" r="78" fill="#FFF1C2"/>
+  <g fill="#FFC1D9" opacity=".22"><ellipse cx="300" cy="170" rx="220" ry="22"/><ellipse cx="520" cy="215" rx="150" ry="14"/><ellipse cx="1300" cy="130" rx="190" ry="18"/><ellipse cx="900" cy="280" rx="240" ry="12"/></g>
+  <g fill="#6A429C" opacity=".75"><rect x="60" y="430" width="70" height="130"/><rect x="150" y="390" width="54" height="170"/><rect x="330" y="410" width="90" height="150"/><rect x="560" y="360" width="60" height="200"/><rect x="640" y="440" width="110" height="120"/><rect x="860" y="400" width="70" height="160"/><rect x="1180" y="420" width="90" height="140"/><rect x="1380" y="380" width="64" height="180"/><rect x="1470" y="450" width="100" height="110"/></g>
+  <g fill="#2A1B4D"><rect x="0" y="470" width="90" height="90"/><rect x="100" y="440" width="60" height="120"/><rect x="220" y="330" width="78" height="230"/><rect x="310" y="480" width="120" height="80"/><rect x="450" y="420" width="84" height="140"/><rect x="700" y="490" width="140" height="70"/><rect x="940" y="460" width="60" height="100"/><rect x="1250" y="350" width="86" height="210"/><rect x="1350" y="470" width="130" height="90"/><rect x="1500" y="420" width="100" height="140"/><path d="M259 330v-50h4v50z"/></g>
+  <g fill="#FFD98A" opacity=".8"><rect x="236" y="360" width="8" height="10"/><rect x="262" y="400" width="8" height="10"/><rect x="236" y="450" width="8" height="10"/><rect x="470" y="446" width="8" height="10"/><rect x="500" y="486" width="8" height="10"/><rect x="1270" y="380" width="8" height="10"/><rect x="1300" y="430" width="8" height="10"/><rect x="1270" y="490" width="8" height="10"/><rect x="1530" y="450" width="8" height="10"/><rect x="118" y="470" width="8" height="10"/></g>
+  <rect y="560" width="1600" height="340" fill="#231A3A"/>
+  <polygon points="700,560 900,560 1560,900 40,900" fill="url(#g-road)"/>
+  <g fill="#FFE7A8" opacity=".85"><polygon points="796,578 804,578 806,606 794,606"/><polygon points="792,636 808,636 812,694 788,694"/><polygon points="784,744 816,744 826,868 774,868"/></g>
+  <g stroke="#A985D6" stroke-width="3" opacity=".55"><path d="M700 560 40 900M900 560 1560 900"/></g>
+  <use href="#palm" transform="translate(520,592) scale(.8)"/><use href="#palm" transform="translate(1100,590) scale(-.75,.75)"/>
+  <use href="#palm" transform="translate(290,660) scale(1.5)"/><use href="#palm" transform="translate(1330,668) scale(-1.6,1.6)"/>
+  <g transform="translate(905,592)"><ellipse cx="82" cy="88" rx="96" ry="9" fill="#000" opacity=".35"/><rect x="16" y="72" width="30" height="16" rx="5" fill="#120D20"/><rect x="118" y="72" width="30" height="16" rx="5" fill="#120D20"/><path d="M30 34 50 6h64l20 28z" fill="#B8324F"/><path d="M42 32 55 12h54l13 20z" fill="#2B2350"/><rect y="30" width="164" height="50" rx="14" fill="#E8456B"/><rect x="8" y="44" width="34" height="10" rx="4" fill="#FFE08A"/><rect x="122" y="44" width="34" height="10" rx="4" fill="#FFE08A"/><rect x="62" y="56" width="40" height="12" rx="3" fill="#F6F0FF"/></g>
+  <g><circle cx="170" cy="740" r="92" fill="#0E1422" opacity=".72"/><path d="M100 740h140M170 672v136M118 694l96 96" stroke="#6C7A93" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="170" cy="740" r="92" fill="none" stroke="#fff" stroke-width="4" opacity=".85"/><path d="M170 724l11 28-11-7-11 7z" fill="#fff"/><rect x="82" y="848" width="104" height="10" rx="5" fill="#5BE37D"/><rect x="196" y="848" width="62" height="10" rx="5" fill="#5BB8FF"/></g>
+  <g font-family="Segoe UI,sans-serif" font-weight="700" text-anchor="end"><text x="1500" y="76" font-size="40" fill="#C8F7C5">$ 12.450</text><text x="1500" y="118" font-size="30" fill="#fff" opacity=".9">★ ★ ☆ ☆ ☆</text></g>
+</symbol>
+<symbol id="mascot" viewBox="0 0 64 64">
+  <path d="M12 34q-6 2-6 8M52 34q6 2 6 8" fill="none" stroke="#0A8480" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="20" y="52" width="7" height="8" rx="3" fill="#0A8480"/><rect x="37" y="52" width="7" height="8" rx="3" fill="#0A8480"/>
+  <rect x="11" y="6" width="42" height="49" rx="10" fill="#18BDB6"/><path d="M11 45v0a10 10 0 0010 10h22a10 10 0 0010-10v-4a10 10 0 01-10 10H21a10 10 0 01-10-10z" fill="#0FA39D"/>
+  <rect x="16" y="11" width="32" height="22" rx="5" fill="#DDFBF7"/>
+  <circle cx="26" cy="19.5" r="2" fill="#0B4F4D"/><circle cx="38" cy="19.5" r="2" fill="#0B4F4D"/><path d="M28 23.5q4 3.5 8 0" fill="none" stroke="#0B4F4D" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="22" y="28" width="20" height="2.2" rx="1.1" fill="#18BDB6" opacity=".75"/>
+  <path d="M21 40.5h3v-3h3v3h3v3h-3v3h-3v-3h-3z" fill="#086E6B"/><circle cx="39" cy="40" r="2.6" fill="#FFD166"/><circle cx="45" cy="44.5" r="2.6" fill="#FF7A7A"/>
+</symbol>
+<symbol id="i-play" viewBox="0 0 20 20"><path d="M6.5 4.2v11.6a.6.6 0 00.9.5l9.3-5.8a.6.6 0 000-1L7.4 3.7a.6.6 0 00-.9.5z"/></symbol>
+<symbol id="i-stop" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2"/></symbol>
+<symbol id="i-screen" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="10" rx="2"/><path d="M7.5 17h5M10 14v3"/></symbol>
+<symbol id="i-crop" viewBox="0 0 20 20"><path d="M6 2.5V14h11.5M2.5 6H14v11.5"/></symbol>
+<symbol id="i-text" viewBox="0 0 20 20"><path d="M4 6V4.5h12V6M10 4.5v11M7.5 15.5h5"/></symbol>
+<symbol id="i-book" viewBox="0 0 20 20"><path d="M4.5 4.5A1.5 1.5 0 016 3h9.5v11.5H6A1.5 1.5 0 004.5 16zM4.5 16A1.5 1.5 0 006 17.5h9.5M8 6.5h4.5"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 20 20"><path d="M3.5 6H10M14 6h2.5M3.5 14H6M10 14h6.5"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></symbol>
+<symbol id="i-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="5"/><path d="M13 13l3.5 3.5"/></symbol>
+<symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 20 20"><path d="M4 10h12M11.5 5.5L16 10l-4.5 4.5"/></symbol>
+<symbol id="i-back" viewBox="0 0 20 20"><path d="M16 10H4M8.5 5.5L4 10l4.5 4.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 20 20"><path d="M4.5 10.5L8 14l7.5-8"/></symbol>
+<symbol id="i-sync" viewBox="0 0 20 20"><path d="M4.5 9.5a5.5 5.5 0 019.7-3L15.5 8M15.5 4.5V8H12M15.5 10.5a5.5 5.5 0 01-9.7 3L4.5 12M4.5 15.5V12H8"/></symbol>
+<symbol id="i-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M3 10h14M10 3c2.6 2.6 2.6 11.4 0 14M10 3c-2.6 2.6-2.6 11.4 0 14"/></symbol>
+<symbol id="i-power" viewBox="0 0 20 20"><path d="M10 3.5v6M6.2 5.8a5.5 5.5 0 107.6 0"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 20 20"><path d="M11 2.5L5 11h4.5l-1 6.5L15 8.5h-4.5z"/></symbol>
+<symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 9.2v4.3M10 6.5v.1"/></symbol>
+<symbol id="i-reset" viewBox="0 0 20 20"><path d="M5 6.5A6 6 0 114 10M5 3v3.5h3.5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 20 20"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 016 0V9"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 20 20"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 015.7-1.3"/></symbol>
+<symbol id="i-x"viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></symbol>
+<symbol id="i-min" viewBox="0 0 20 20"><path d="M5 10h10"/></symbol>
+<symbol id="i-max" viewBox="0 0 20 20"><rect x="5.5" y="5.5" width="9" height="9" rx="1"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="titlebar"><svg class="tb-ico"><use href="#mascot"/></svg><span>Altyazı Çevirici</span>
+  <div class="tb-btns"><button aria-label="Küçült"><svg class="ico"><use href="#i-min"/></svg></button><button aria-label="Büyüt"><svg class="ico"><use href="#i-max"/></svg></button><button aria-label="Kapat"><svg class="ico"><use href="#i-x"/></svg></button></div>
+</div>
+  <div class="a-body">
+    <nav class="a-nav">
+      <div class="brand"><svg><use href="#mascot"/></svg><div><b>Altyazı Çevirici</b><small>İngilizce → Türkçe</small></div></div>
+      <div data-tabs="main" style="display:flex;flex-direction:column;gap:4px">
+        <button class="nav active" data-tab="areas"><svg class="ico"><use href="#i-crop"/></svg>Önizleme</button>
+        <button class="nav" data-tab="look"><svg class="ico"><use href="#i-text"/></svg>Görünüm</button>
+        <button class="nav" data-tab="dict"><svg class="ico"><use href="#i-book"/></svg>Sözlük</button>
+        <button class="nav" data-tab="adv"><svg class="ico"><use href="#i-sliders"/></svg>Gelişmiş</button>
+      </div>
+      <div class="sp"></div>
+      <div class="card a-status">
+        <div class="r"><i class="dot"></i><span data-status>Hazır</span></div>
+        <div class="kv"><span>Gecikme</span><b data-ms>—</b></div>
+        <button class="btn primary lg run" data-run-toggle><svg class="ico i-play"><use href="#i-play"/></svg><svg class="ico i-stop"><use href="#i-stop"/></svg><span data-run-label>Başlat</span></button>
+      </div>
+    </nav>
+
+    <main class="a-main">
+      <div class="a-head">
+        <div><h1>Canlı önizleme</h1><p>Kutuları sürükleyip yerleştir, yerini bulunca kilitle.</p></div>
+        <div class="sp"></div>
+        <div class="legend">
+          <div class="chipgrp"><button class="chip" data-select="orig"><i class="key o"></i>Orijinal altyazı</button><button class="lk" data-lock="orig" aria-label="Orijinal altyazı alanını kilitle"><svg class="ico sm u"><use href="#i-unlock"/></svg><svg class="ico sm l"><use href="#i-lock"/></svg></button></div>
+          <div class="chipgrp"><button class="chip" data-select="trans"><i class="key t"></i>Çeviri</button><button class="lk" data-lock="trans" aria-label="Çeviri alanını kilitle"><svg class="ico sm u"><use href="#i-unlock"/></svg><svg class="ico sm l"><use href="#i-lock"/></svg></button></div>
+        </div>
+      </div>
+      <div class="card preview"><div class="stage">
+  <svg class="scene"><use href="#scene"/></svg>
+  <div class="game-sub" data-text="orig"></div>
+  <div class="box box-trans" data-box="trans"><span class="box-tag"><svg class="ico tag-lock"><use href="#i-lock"/></svg>Çeviri</span><div class="box-body"><span class="sub-tr" data-text="trans"></span></div></div>
+  <div class="box box-orig" data-box="orig"><span class="box-tag"><svg class="ico tag-lock"><use href="#i-lock"/></svg>Orijinal altyazı</span></div>
+</div></div>
+      <div class="card srcbar"><div class="source">
+  <label>Kaynak<select class="select"><option>PS Remote Play penceresi</option><option>Tüm ekran</option><option>Chiaki penceresi</option><option>Başka bir pencere seç…</option></select></label>
+  <label>Monitör<select class="select"><option>Monitör 1 · 2560 × 1440</option><option>Monitör 2 · 1920 × 1080</option></select></label>
+</div><div class="sp"></div><span class="badge ok"><svg class="ico sm"><use href="#i-check"/></svg>Görüntü alınıyor</span><button class="btn icon ghost" aria-label="Kaynakları yenile" title="Yenile"><svg class="ico sm"><use href="#i-sync"/></svg></button></div>
+      <div class="card lastcard">
+        <span class="set-i"><svg class="ico"><use href="#i-bolt"/></svg></span>
+        <div class="t"><small>Son çeviri</small><b data-last></b><small data-text="orig"></small></div>
+        <span class="badge" data-ms>—</span>
+      </div>
+    </main>
+
+    <aside class="card a-insp">
+      <section class="scroll" data-panel="main:areas">
+        <header><h2>Alanlar</h2><p>Seçili kutunun tam konumu ve boyutu.</p></header>
+        <div class="form geo">
+  <div class="seg"><button data-select="orig"><i class="key o"></i>Orijinal altyazı</button><button data-select="trans"><i class="key t"></i>Çeviri</button></div>
+  <div class="field"><span class="lbl">Konum</span>
+    <div class="geo-grid"><label class="num"><span>X</span><input type="number" data-geo="x" aria-label="X"><em>px</em></label><label class="num"><span>Y</span><input type="number" data-geo="y" aria-label="Y"><em>px</em></label></div></div>
+  <div class="field"><span class="lbl">Boyut</span>
+    <div class="geo-grid"><label class="num"><span>G</span><input type="number" data-geo="w" aria-label="Genişlik"><em>px</em></label><label class="num"><span>Y</span><input type="number" data-geo="h" aria-label="Yükseklik"><em>px</em></label></div></div>
+  <button class="btn" data-act="reset-box"><svg class="ico sm"><use href="#i-reset"/></svg>Varsayılana döndür</button>
+</div>
+        <label class="opt" style="margin-top:0"><span><b>Bu alanı kilitle</b><small>Kilitliyken taşınmaz ve boyutlanmaz; tıklamalar alttaki kutuya geçer.</small></span><span class="switch"><input type="checkbox" data-lock-sel><i></i></span></label>
+        <div class="hint"><svg class="ico sm"><use href="#i-info"/></svg><span>Kutular üst üste gelince seçili olan üstte kalır. Diğerini seçmek için etiketine ya da yukarıdaki adına tıkla.</span></div>
+      </section>
+      <section class="scroll" data-panel="main:look" hidden>
+        <header><h2>Görünüm</h2><p>Değişiklikler önizlemedeki çeviriye anında yansır.</p></header>
+        <div class="form">
+  <label class="field"><span class="lbl">Yazı tipi</span>
+    <select class="select" data-var="--sub-font">
+      <option value="'Segoe UI Variable Display','Segoe UI',sans-serif">Segoe UI</option>
+      <option value="Bahnschrift,'Segoe UI',sans-serif">Bahnschrift</option>
+      <option value="'Trebuchet MS',sans-serif">Trebuchet MS</option>
+      <option value="Georgia,serif">Georgia</option>
+      <option value="'Comic Sans MS',cursive">Comic Sans</option>
+    </select></label>
+  <label class="field"><span class="lbl">Boyut <b data-out="--sub-size" data-unit=" pt"></b></span><input type="range" min="24" max="72" data-var="--sub-size"></label>
+  <div class="field"><span class="lbl">Yazı rengi</span>
+    <div class="swatches">
+      <button class="sw" style="--c:#FFFFFF" data-swatch="--sub-color" data-value="#FFFFFF" aria-label="Beyaz"></button>
+      <button class="sw" style="--c:#FFE45C" data-swatch="--sub-color" data-value="#FFE45C" aria-label="Sarı"></button>
+      <button class="sw" style="--c:#7DF3EC" data-swatch="--sub-color" data-value="#7DF3EC" aria-label="Turkuaz"></button>
+      <button class="sw" style="--c:#9BFF8A" data-swatch="--sub-color" data-value="#9BFF8A" aria-label="Yeşil"></button>
+      <button class="sw" style="--c:#FFB3D1" data-swatch="--sub-color" data-value="#FFB3D1" aria-label="Pembe"></button>
+      <label class="sw pick" title="Özel renk"><input type="color" data-var="--sub-color" value="#ffffff" aria-label="Özel yazı rengi"></label>
+    </div></div>
+  <div class="field"><span class="lbl">Dış çizgi <b data-out="--sub-ow" data-unit=" px"></b></span>
+    <div class="swatches">
+      <button class="sw" style="--c:#000000" data-swatch="--sub-outline" data-value="#000000" aria-label="Siyah"></button>
+      <button class="sw" style="--c:#1F2A44" data-swatch="--sub-outline" data-value="#1F2A44" aria-label="Lacivert"></button>
+      <button class="sw" style="--c:#086E6B" data-swatch="--sub-outline" data-value="#086E6B" aria-label="Koyu turkuaz"></button>
+      <button class="sw" style="--c:#7A1F3D" data-swatch="--sub-outline" data-value="#7A1F3D" aria-label="Bordo"></button>
+      <label class="sw pick" title="Özel renk"><input type="color" data-var="--sub-outline" value="#000000" aria-label="Özel dış çizgi rengi"></label>
+    </div>
+    <input type="range" min="0" max="6" step="1" data-var="--sub-ow" aria-label="Dış çizgi kalınlığı"></div>
+  <label class="field"><span class="lbl">Arka plan opaklığı <b data-out="--sub-bg" data-fmt="pct"></b></span><input type="range" min="0" max="1" step=".05" data-var="--sub-bg"></label>
+</div>
+      </section>
+      <section class="scroll" data-panel="main:dict" hidden>
+        <header><h2>Sözlük</h2><p>Oyuna özel terimler doğru çevrilsin.</p></header>
+        <div class="dict">
+  <label class="search"><svg class="ico sm"><use href="#i-search"/></svg><input data-pack-search placeholder="Paket veya terim ara" aria-label="Sözlükte ara"></label>
+  <div class="sec-h">Oyun paketleri</div>
+  <div class="list" data-packs></div>
+  <div class="sec-h">Terimlerim</div>
+  <form class="term-form" data-term-form><input class="input" placeholder="İngilizce" aria-label="İngilizce terim" required><svg class="ico sm"><use href="#i-arrow"/></svg><input class="input" placeholder="Türkçe" aria-label="Türkçe karşılık" required><button class="btn icon primary" aria-label="Terim ekle"><svg class="ico sm"><use href="#i-plus"/></svg></button></form>
+  <div class="list" data-terms></div>
+  <label class="opt"><span><b>Büyük harfli özel isimleri çevirme</b><small>“Vice City”, “Marco” gibi adlar olduğu gibi kalır.</small></span><span class="switch"><input type="checkbox" checked><i></i></span></label>
+</div>
+      </section>
+      <section class="scroll" data-panel="main:adv" hidden>
+        <header><h2>Gelişmiş</h2><p>Kurulum ve bakım ayarları.</p></header>
+        <div class="adv">
+  <div class="set"><span class="set-i"><svg class="ico"><use href="#i-sync"/></svg></span><span class="set-t"><b>Güncellemeler</b><small data-upd>Sürüm 1.4.2 · son denetim dün</small></span><button class="btn" data-act="check-update">Denetle</button></div>
+  <div class="set"><span class="set-i"><svg class="ico"><use href="#i-globe"/></svg></span><span class="set-t"><b>OCR dil paketi</b><small>İngilizce (en-US) · Windows OCR</small><span class="badge warn" data-ocr>Kurulu değil</span><span class="bar" hidden><i></i></span></span><button class="btn primary" data-act="install-ocr">Kur</button></div>
+  <label class="set"><span class="set-i"><svg class="ico"><use href="#i-power"/></svg></span><span class="set-t"><b>Windows açılınca başlat</b><small>Oturum açtığında arka planda hazır bekler.</small></span><span class="switch"><input type="checkbox"><i></i></span></label>
+</div>
+      </section>
+    </aside>
+  </div>
+</div>
+<script>
+const AC=(()=>{
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const root=document.documentElement;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const DEF={orig:{x:.2,y:.79,w:.6,h:.095},trans:{x:.18,y:.635,w:.64,h:.105}};
+const S={boxes:JSON.parse(JSON.stringify(DEF)),sel:'trans',running:false,locked:{orig:false,trans:false}};
+const NAMES={orig:'Orijinal altyazı',trans:'Çeviri'};
+const RES={x:1920,y:1080,w:1920,h:1080};
+const ico=n=>`<svg class="ico sm"><use href="#i-${n}"/></svg>`;
+
+/* ---- kutular ---- */
+function render(){
+  for(const n in S.boxes){const b=S.boxes[n];
+    $$(`[data-box="${n}"]`).forEach(el=>{
+      el.style.left=b.x*100+'%';el.style.top=b.y*100+'%';el.style.width=b.w*100+'%';el.style.height=b.h*100+'%';
+      el.classList.toggle('selected',n===S.sel);el.classList.toggle('locked',S.locked[n]);});}
+  const b=S.boxes[S.sel],lk=S.locked[S.sel];
+  $$('[data-geo]').forEach(i=>{i.disabled=lk;if(document.activeElement!==i)i.value=Math.round(b[i.dataset.geo]*RES[i.dataset.geo]);});
+  $$('[data-act="reset-box"]').forEach(x=>x.disabled=lk);
+  $$('[data-lock-sel]').forEach(c=>c.checked=lk);
+  $$('[data-lock]').forEach(x=>{const on=S.locked[x.dataset.lock];x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);x.title=on?'Kilidi aç':'Kilitle';});
+  $$('[data-select]').forEach(e=>e.classList.toggle('active',e.dataset.select===S.sel));
+  $$('[data-sel-name]').forEach(e=>e.textContent=NAMES[S.sel]);
+}
+function select(n){S.sel=n;render();}
+function setLock(n,on){S.locked[n]=on;render();}
+$$('[data-box]').forEach(el=>{
+  ['nw','n','ne','e','se','s','sw','w'].forEach(h=>{const i=document.createElement('i');i.className='h h-'+h;i.dataset.h=h;el.appendChild(i);});
+  el.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;
+    const n=el.dataset.box,r=el.closest('.stage').getBoundingClientRect(),h=e.target.dataset.h||'';
+    const b0={...S.boxes[n]},sx=e.clientX,sy=e.clientY,MW=.08,MH=.05;
+    select(n);e.preventDefault();
+    if(S.locked[n])return;
+    try{el.setPointerCapture(e.pointerId);}catch(_){}
+    let live=false;
+    const mv=ev=>{
+      if(!live){if(Math.abs(ev.clientX-sx)<4&&Math.abs(ev.clientY-sy)<4)return;live=true;}
+      const dx=(ev.clientX-sx)/r.width,dy=(ev.clientY-sy)/r.height;let {x,y,w,h:hh}=b0;
+      if(!h){x=clamp(x+dx,0,1-w);y=clamp(y+dy,0,1-hh);}
+      else{
+        if(h.includes('e'))w=clamp(b0.w+dx,MW,1-b0.x);
+        if(h.includes('s'))hh=clamp(b0.h+dy,MH,1-b0.y);
+        if(h.includes('w')){x=clamp(b0.x+dx,0,b0.x+b0.w-MW);w=b0.w+b0.x-x;}
+        if(h.includes('n')){y=clamp(b0.y+dy,0,b0.y+b0.h-MH);hh=b0.h+b0.y-y;}
+      }
+      S.boxes[n]={x,y,w,h:hh};render();};
+    const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);};
+    el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  });
+});
+const ro=new ResizeObserver(es=>es.forEach(e=>{if(e.contentRect.height)e.target.style.setProperty('--k',e.contentRect.height/1080);}));
+$$('.stage').forEach(s=>ro.observe(s));
+
+/* ---- görünüm değişkenleri ---- */
+function setVar(name,val){
+  root.style.setProperty(name,val);
+  $$(`[data-var="${name}"]`).forEach(i=>{if(i.value!=val)i.value=val;});
+  $$(`[data-out="${name}"]`).forEach(o=>o.textContent=o.dataset.fmt==='pct'?Math.round(val*100)+'%':val+(o.dataset.unit||''));
+  $$(`[data-swatch="${name}"]`).forEach(s=>s.classList.toggle('active',s.dataset.value.toLowerCase()===String(val).toLowerCase()));
+}
+Object.entries({'--sub-font':"'Segoe UI Variable Display','Segoe UI',sans-serif",'--sub-size':44,'--sub-color':'#FFFFFF','--sub-outline':'#000000','--sub-ow':3,'--sub-bg':.45}).forEach(([k,v])=>setVar(k,v));
+
+/* ---- sekmeler ---- */
+function showTab(g,n){
+  $$(`[data-tabs="${g}"] [data-tab]`).forEach(b=>b.classList.toggle('active',b.dataset.tab===n));
+  $$(`[data-panel^="${g}:"]`).forEach(p=>p.hidden=p.dataset.panel!==g+':'+n);
+  document.dispatchEvent(new CustomEvent('tabchange',{detail:{g,n}}));
+}
+
+/* ---- çalıştır / durdur ---- */
+const LINES=[
+  ['We need to get out of here before the cops show up.','Polisler gelmeden buradan çıkmamız lazım.'],
+  ['Meet me at the pier. Come alone.','İskelede buluşalım. Yalnız gel.'],
+  ["I told you, Marco doesn't work with strangers.",'Sana söyledim, Marco yabancılarla çalışmaz.'],
+  ['Nice car. Shame if something happened to it.','Güzel araba. Başına bir şey gelse yazık olur.']];
+let li=0,timer;
+const txt=(sel,v)=>$$(sel).forEach(e=>e.textContent=v);
+function setLine(i){li=i;txt('[data-text="orig"]',LINES[i][0]);txt('[data-text="trans"]',LINES[i][1]);txt('[data-last]',LINES[i][1]);}
+const HIST=[];
+function tick(){setLine((li+1)%LINES.length);const ms=170+Math.round(Math.random()*120);txt('[data-ms]',ms+' ms');
+  HIST.unshift([LINES[li][1],LINES[li][0]+' · '+ms+' ms']);HIST.length=Math.min(HIST.length,5);
+  $$('[data-history]').forEach(el=>{el.textContent='';HIST.forEach(h=>{const d=document.createElement('div'),b=document.createElement('b'),s=document.createElement('small');b.textContent=h[0];s.textContent=h[1];d.append(b,s);el.appendChild(d);});});}
+function setRun(on){
+  S.running=on;document.body.classList.toggle('running',on);
+  txt('[data-run-label]',on?'Durdur':'Başlat');txt('[data-status]',on?'Çalışıyor':'Hazır');
+  clearInterval(timer);
+  if(on){tick();timer=setInterval(tick,3000);}else txt('[data-ms]','—');
+}
+setLine(0);
+
+/* ---- sözlük ---- */
+const PACKS=[['GTA 6','G6','#E8456B',412,1],['Red Dead Redemption 2','RD','#B4532A',268,0],['The Last of Us Part II','TL','#3F6B4E',154,0],['God of War Ragnarök','GW','#3B6FB5',197,0],['Cyberpunk 2077','CP','#C9A400',331,0],['Genel oyun terimleri','GN','#0A8480',520,1]]
+  .map(([name,ab,c,n,on])=>({name,ab,c,n,on:!!on}));
+const TERMS=[['Wanted Level','Aranma Seviyesi'],['Heist','Soygun'],['Safehouse','Sığınak']];
+let q='';
+function renderDict(){
+  const m=s=>s.toLocaleLowerCase('tr').includes(q);
+  const ps=PACKS.filter(p=>m(p.name)),ts=TERMS.filter(t=>m(t[0])||m(t[1]));
+  $$('[data-packs]').forEach(el=>el.innerHTML=ps.map(p=>`<div class="li"><span class="tile" style="--c:${p.c}">${p.ab}</span><span class="li-t"><b>${p.name}</b><small>${p.n} terim</small></span><label class="switch"><input type="checkbox" data-pack="${PACKS.indexOf(p)}" ${p.on?'checked':''} aria-label="${p.name}"><i></i></label></div>`).join('')||'<div class="empty">Eşleşen paket yok.</div>');
+  $$('[data-terms]').forEach(el=>{el.textContent='';
+    if(!ts.length){el.innerHTML='<div class="empty">Eşleşen terim yok.</div>';return;}
+    ts.forEach(t=>{const d=document.createElement('div');d.className='term';d.innerHTML=`<span></span>${ico('arrow')}<span></span>`;d.children[0].textContent=t[0];d.children[2].textContent=t[1];el.appendChild(d);});});
+  txt('[data-pack-count]',PACKS.filter(p=>p.on).length+' paket açık');
+}
+renderDict();
+
+/* ---- olaylar ---- */
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.var)setVar(t.dataset.var,t.value);
+  if(t.dataset.geo){const k=t.dataset.geo,b=S.boxes[S.sel],v=(parseFloat(t.value)||0)/RES[k];
+    if(k==='x')b.x=clamp(v,0,1-b.w);if(k==='y')b.y=clamp(v,0,1-b.h);
+    if(k==='w')b.w=clamp(v,.08,1-b.x);if(k==='h')b.h=clamp(v,.05,1-b.y);render();}
+  if(t.matches('[data-lock-sel]'))setLock(S.sel,t.checked);
+  if(t.matches('[data-pack-search]')){q=t.value.trim().toLocaleLowerCase('tr');renderDict();}
+  if(t.dataset.pack){PACKS[+t.dataset.pack].on=t.checked;txt('[data-pack-count]',PACKS.filter(p=>p.on).length+' paket açık');}
+});
+document.addEventListener('focusout',e=>{if(e.target.dataset&&e.target.dataset.geo)render();});
+document.addEventListener('submit',e=>{
+  if(!e.target.matches('[data-term-form]'))return;e.preventDefault();
+  const [a,b]=$$('input',e.target);if(!a.value.trim()||!b.value.trim())return;
+  TERMS.unshift([a.value.trim(),b.value.trim()]);a.value=b.value='';renderDict();a.focus();
+});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tab],[data-swatch],[data-select],[data-run-toggle],[data-act],[data-lock]');if(!t)return;
+  if(t.dataset.lock)setLock(t.dataset.lock,!S.locked[t.dataset.lock]);
+  if(t.dataset.tab)showTab(t.closest('[data-tabs]').dataset.tabs,t.dataset.tab);
+  if(t.dataset.swatch)setVar(t.dataset.swatch,t.dataset.value);
+  if(t.dataset.select)select(t.dataset.select);
+  if(t.hasAttribute('data-run-toggle'))setRun(!S.running);
+  const a=t.dataset.act;
+  if(a==='reset-box'&&!S.locked[S.sel]){S.boxes[S.sel]={...DEF[S.sel]};render();}
+  if(a==='check-update'){t.disabled=true;t.textContent='Denetleniyor…';setTimeout(()=>{t.disabled=false;t.textContent='Denetle';txt('[data-upd]','Sürüm 1.4.2 · güncel, az önce denetlendi');},1300);}
+  if(a==='install-ocr'){t.disabled=true;t.textContent='Kuruluyor…';const bar=t.closest('.set').querySelector('.bar');bar.hidden=false;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>bar.firstElementChild.style.width='100%'));
+    setTimeout(()=>{bar.hidden=true;t.hidden=true;$$('[data-ocr]').forEach(b=>{b.className='badge ok';b.textContent='Kurulu';});},2000);}
+});
+render();
+return {S,DEF,render,select,setLock,showTab,setRun,setVar,$$};
+})();
+
+</script>
+<script>
+document.addEventListener('tabchange',e=>{if(e.detail.g==='main'&&e.detail.n==='look')AC.select('trans');});
+</script>
+</body></html>

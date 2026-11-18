@@ -176,7 +176,7 @@ jobs:
           zip="artifacts/AltyaziCevirici-Portable-${VERSION}.zip"
           notes="$(mktemp)"
           cat > "$notes" << EOF
-          Altyazı Çevirici ${VERSION}
+          Çevirmen Samet ${VERSION}
 
           - AltyaziCevirici-Setup-${VERSION}.exe — kullanıcı başına kurulum (yönetici gerekmez), Başlat menüsü, isteğe bağlı masaüstü kısayolu, kaldırıcı. Kurulum dili Türkçedir.
           - AltyaziCevirici-Portable-${VERSION}.zip — AltyaziCevirici.exe ve KULLANIM.txt.

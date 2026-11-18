@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=1280">
+<title>Altyazı Çevirici · Konsept B (Sihirbaz)</title>
+<style>
+/*P:CSS*/
+/* ---- Konsept B: adım adım sihirbaz + kompakt kontrol merkezi ---- */
+body[data-mode=wizard] .b-home,body[data-mode=home] .b-wiz{display:none}
+.b-wiz{flex:1;display:flex;flex-direction:column;min-height:0}
+.b-steps{height:60px;flex:none;display:flex;align-items:center;justify-content:center;gap:0;position:relative}
+.b-step{border:0;background:none;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:20px;font-size:13px;font-weight:600;color:var(--tx3);cursor:pointer}
+.b-step i{width:26px;height:26px;border-radius:50%;border:1.5px solid #B9C2CB;display:grid;place-items:center;font-style:normal;font-size:12px;background:#fff}
+.b-step i .ico{display:none;width:14px;height:14px;stroke-width:2}
+.b-step.done{color:var(--tx2)}
+.b-step.done i{background:var(--acc-t);border-color:var(--acc);color:var(--acc-dd)}
+.b-step.done i span{display:none}.b-step.done i .ico{display:block}
+.b-step.active{color:var(--tx)}
+.b-step.active i{background:var(--acc-d);border-color:var(--acc-d);color:#fff;box-shadow:0 0 0 4px var(--acc-t2)}
+.b-line{width:36px;height:2px;border-radius:1px;background:#CBD3DA}
+.b-skip{position:absolute;right:24px}
+.b-wbody{flex:1;display:grid;grid-template-columns:1fr 364px;gap:18px;padding:0 24px 24px;min-height:0}
+.b-left{display:flex;flex-direction:column;gap:12px;min-width:0}
+.preview{padding:8px}
+.preview .stage{aspect-ratio:16/9;border-radius:8px}
+.stage[data-focus=orig] [data-box=trans],.stage[data-focus=trans] [data-box=orig]{opacity:.3;pointer-events:none}
+.srcbar{padding:10px 14px;display:flex;align-items:center;gap:12px}
+.b-tip{flex:1;display:flex;align-items:center;gap:12px;padding:0 6px;min-height:0}
+.b-tip svg{width:52px;height:52px;flex:none}
+.b-tip p{background:#fff;border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:10px 14px;font-size:13px;color:var(--tx2);box-shadow:var(--sh1)}
+.b-side{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.b-side section{flex:1;min-height:0;padding:22px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:11.5px;font-weight:600;color:var(--acc-d);text-transform:uppercase;letter-spacing:.06em}
+.b-side section>header p{color:var(--tx2);font-size:13px;margin-top:6px}
+.b-side .geo .seg{display:none}
+.b-foot{display:flex;gap:10px;padding:14px 22px;border-top:1px solid var(--line);background:#FAFBFC}
+.checks{display:flex;flex-direction:column;gap:10px}
+.checks div{display:flex;align-items:center;gap:10px;font-size:13px}
+.checks .ico{width:22px;height:22px;padding:4px;border-radius:50%;background:var(--ok-t);color:var(--ok);stroke-width:2}
+details{border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#FAFBFC}
+summary{height:40px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--tx2);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary .ico{transition:transform .15s}
+details[open] summary .ico:last-child{transform:rotate(90deg)}
+details .geo{padding:4px 0 12px}
+.summary{display:flex;flex-direction:column}
+.summary div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.summary div span{color:var(--tx2)}.summary div b{font-weight:600;text-align:right}
+
+.b-home{flex:1;display:grid;grid-template-columns:392px 1fr 336px;gap:16px;padding:6px 24px 24px;min-height:0}
+.b-col{display:flex;flex-direction:column;gap:16px;min-height:0}
+.hero{padding:20px;display:flex;flex-direction:column;gap:16px;background:linear-gradient(160deg,#fff 55%,var(--acc-t))}
+.hero-top{display:flex;align-items:center;gap:14px}
+.hero-top svg{width:68px;height:68px}
+.hero-top .st{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2);font-weight:600;margin-top:4px}
+.hero .run{height:52px;font-size:16px;border-radius:12px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.metric b{display:block;font:600 17px/1.3 'Segoe UI Variable Display','Segoe UI',sans-serif;font-variant-numeric:tabular-nums}
+.lastline small{display:block}.lastline b{font-weight:600;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini{padding:12px;display:flex;flex-direction:column;gap:10px}
+.mini .stage{border-radius:8px;aspect-ratio:16/9}
+.hero{flex:1;justify-content:space-between}
+.mini-h{display:flex;align-items:center;gap:8px}
+.mini-h .btn{height:30px;padding:0 10px;font-size:12.5px}
+.pane{padding:18px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.pane.grow{flex:1}
+.pane-h{display:flex;align-items:center;gap:10px}
+.setup .btn{justify-content:flex-start;width:100%}
+</style></head>
+<body data-mode="wizard">
+<!--P:DEFS-->
+<div class="app">
+  <!--P:TITLEBAR-->
+
+  <!-- SİHİRBAZ -->
+  <div class="b-wiz">
+    <div class="b-steps" data-tabs="wiz">
+      <button class="b-step active" data-tab="1"><i><span>1</span><svg class="ico"><use href="#i-check"/></svg></i>Kaynak</button><span class="b-line"></span>
+      <button class="b-step" data-tab="2"><i><span>2</span><svg class="ico"><use href="#i-check"/></svg></i>Altyazı alanı</button><span class="b-line"></span>
+      <button class="b-step" data-tab="3"><i><span>3</span><svg class="ico"><use href="#i-check"/></svg></i>Çeviri yeri</button><span class="b-line"></span>
+      <button class="b-step" data-tab="4"><i><span>4</span><svg class="ico"><use href="#i-check"/></svg></i>Görünüm</button><span class="b-line"></span>
+      <button class="b-step" data-tab="5"><i><span>5</span><svg class="ico"><use href="#i-check"/></svg></i>Hazır</button>
+      <button class="btn ghost b-skip" id="skip">Kontrol merkezine geç</button>
+    </div>
+    <div class="b-wbody">
+      <div class="b-left">
+        <div class="card preview"><div id="wstage"><!--P:STAGE--></div></div>
+        <div class="card srcbar"><!--P:SOURCE--><div class="sp"></div><span class="badge ok"><svg class="ico sm"><use href="#i-check"/></svg>Görüntü alınıyor</span></div>
+        <div class="b-tip"><svg><use href="#mascot"/></svg><p id="tip"></p></div>
+      </div>
+      <div class="card b-side">
+        <section class="scroll" data-panel="wiz:1">
+          <header><div class="eyebrow">Adım 1 / 5</div><h1>Oyun nerede görünüyor?</h1><p>Altta oyunun açık olduğu pencereyi ve monitörü seç. Önizlemede oyunu görüyorsan doğru yerdesin.</p></header>
+          <div class="checks">
+            <div><svg class="ico"><use href="#i-check"/></svg>PS Remote Play penceresi bulundu</div>
+            <div><svg class="ico"><use href="#i-check"/></svg>Görüntü alınıyor · 1920 × 1080</div>
+            <div><svg class="ico"><use href="#i-check"/></svg>Altyazı algılandı</div>
+          </div>
+        </section>
+        <section class="scroll" data-panel="wiz:2" hidden>
+          <header><div class="eyebrow">Adım 2 / 5</div><h1>Altyazıyı çerçevele</h1><p>Turuncu kutuyu oyundaki İngilizce altyazının üstüne getir. En uzun altyazı da sığacak kadar geniş bırak.</p></header>
+          <div class="hint"><svg class="ico sm"><use href="#i-info"/></svg><span>Kutuyu sürükle; köşe ve kenarlardan tutup boyutlandır.</span></div>
+          <details><summary><svg class="ico sm"><use href="#i-sliders"/></svg>Hassas ayar<span class="sp"></span><svg class="ico sm"><use href="#i-arrow"/></svg></summary><!--P:GEO--></details>
+        </section>
+        <section class="scroll" data-panel="wiz:3" hidden>
+          <header><div class="eyebrow">Adım 3 / 5</div><h1>Çeviri nerede çıksın?</h1><p>Turkuaz kutu, Türkçe yazının ekranda görüneceği yerdir. Oyundaki önemli şeyleri kapatmayacak bir yere koy.</p></header>
+          <div class="hint"><svg class="ico sm"><use href="#i-info"/></svg><span>Çoğu kişi çeviriyi orijinal altyazının hemen üstüne koyuyor.</span></div>
+          <details><summary><svg class="ico sm"><use href="#i-sliders"/></svg>Hassas ayar<span class="sp"></span><svg class="ico sm"><use href="#i-arrow"/></svg></summary><!--P:GEO--></details>
+        </section>
+        <section class="scroll" data-panel="wiz:4" hidden>
+          <header><div class="eyebrow">Adım 4 / 5</div><h1>Yazı nasıl görünsün?</h1></header>
+          <!--P:LOOK-->
+        </section>
+        <section class="scroll" data-panel="wiz:5" hidden>
+          <header><div class="eyebrow">Adım 5 / 5</div><h1>Her şey hazır</h1><p>Sözlük paketlerini ve diğer ayarları kontrol merkezinden istediğin zaman değiştirebilirsin.</p></header>
+          <div class="summary">
+            <div><span>Kaynak</span><b>PS Remote Play penceresi</b></div>
+            <div><span>Altyazı alanı</span><b id="sum-o"></b></div>
+            <div><span>Çeviri yeri</span><b id="sum-t"></b></div>
+            <div><span>Yazı</span><b id="sum-f"></b></div>
+          </div>
+        </section>
+        <div class="b-foot"><button class="btn" id="back"><svg class="ico sm"><use href="#i-back"/></svg>Geri</button><div class="sp"></div><button class="btn primary" id="next"><span>İleri</span><svg class="ico sm"><use href="#i-arrow"/></svg></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KONTROL MERKEZİ -->
+  <div class="b-home">
+    <div class="b-col">
+      <div class="card hero">
+        <div class="hero-top"><svg><use href="#mascot"/></svg><div><h1>Altyazı Çevirici</h1><div class="st"><i class="dot"></i><span data-status>Hazır</span></div></div></div>
+        <button class="btn primary lg run" data-run-toggle><svg class="ico i-play"><use href="#i-play"/></svg><svg class="ico i-stop"><use href="#i-stop"/></svg><span data-run-label>Başlat</span></button>
+        <div class="metrics"><div class="metric"><small>Gecikme</small><b data-ms>—</b></div><div class="metric"><small>Sözlük</small><b data-pack-count></b></div></div>
+        <div class="lastline"><small>Son çeviri</small><b data-last></b></div>
+      </div>
+      <div class="card mini">
+        <div class="mini-h"><h3>Önizleme</h3><div class="sp"></div><button class="btn" data-goto="2"><svg class="ico sm"><use href="#i-crop"/></svg>Alanlar</button><button class="btn" data-goto="4"><svg class="ico sm"><use href="#i-text"/></svg>Görünüm</button></div>
+        <div class="ministage"><!--P:STAGE--></div>
+        <div class="mini-h"><small>PS Remote Play penceresi · Monitör 1</small><div class="sp"></div><button class="btn ghost" data-goto="1"><svg class="ico sm"><use href="#i-reset"/></svg>Sihirbazı yeniden çalıştır</button></div>
+      </div>
+    </div>
+    <div class="card pane scroll">
+      <div class="pane-h"><h2>Sözlük</h2><div class="sp"></div><span class="badge" data-pack-count></span></div>
+      <!--P:DICT-->
+    </div>
+    <div class="b-col">
+      <div class="card pane"><div class="pane-h"><h2>Gelişmiş</h2></div><!--P:ADV--></div>
+      <div class="card pane grow scroll">
+        <div class="pane-h"><h2>Son çeviriler</h2></div>
+        <div class="hist" data-history><div class="empty">Başlat’a bastığında çeviriler burada listelenir.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/*P:JS*/
+</script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s),stage=$('#wstage .stage'),next=$('#next'),back=$('#back');
+const TIPS={1:'Merhaba! Önce oyunu nerede oynadığını bulalım. Üstteki görüntü oyunun kendisi olmalı.',2:'İngilizce altyazıyı turuncu kutunun içine al, gerisini ben okurum.',3:'Türkçesini nereye yazayım? Turkuaz kutuyu oraya sürükle.',4:'Rengi, boyutu değiştir; üstteki örnek yazı anında güncellenir.',5:'Hazırım! Kontrol merkezinde “Başlat”a basman yeterli.'};
+let step=1;
+const mode=m=>document.body.dataset.mode=m;
+const px=b=>Math.round(b.w*1920)+' × '+Math.round(b.h*1080)+' px';
+function apply(n){
+  step=n;
+  document.querySelectorAll('.b-step').forEach((e,i)=>e.classList.toggle('done',i+1<n));
+  stage.dataset.focus=n===2?'orig':n===3?'trans':'';
+  if(n===2)AC.select('orig');if(n===3||n===4)AC.select('trans');
+  $('#tip').textContent=TIPS[n];back.disabled=n===1;
+  next.firstElementChild.textContent=n===5?'Kontrol merkezini aç':'İleri';
+  if(n===5){$('#sum-o').textContent=px(AC.S.boxes.orig);$('#sum-t').textContent=px(AC.S.boxes.trans);
+    const f=document.querySelector('[data-var="--sub-font"]');$('#sum-f').textContent=f.options[f.selectedIndex].text+' · '+document.querySelector('[data-var="--sub-size"]').value+' pt';}
+}
+document.addEventListener('tabchange',e=>{if(e.detail.g==='wiz')apply(+e.detail.n);});
+next.onclick=()=>step===5?mode('home'):AC.showTab('wiz',String(step+1));
+back.onclick=()=>AC.showTab('wiz',String(step-1));
+$('#skip').onclick=()=>mode('home');
+document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{mode('wizard');AC.showTab('wiz',b.dataset.goto);});
+apply(1);
+})();
+</script>
+</body></html>

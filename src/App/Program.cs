@@ -27,7 +27,7 @@ internal static class Program
         using var mutex = new Mutex(true, "AltyaziCevirici_TekOrnek", out bool first);
         if (!first)
         {
-            MessageBox.Show("Altyazı Çevirici zaten çalışıyor (saat yanındaki simgeye bak).", "Altyazı Çevirici",
+            MessageBox.Show("Çevirmen Samet zaten çalışıyor (saat yanındaki simgeye bak).", "Çevirmen Samet",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

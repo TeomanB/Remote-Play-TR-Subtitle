@@ -4,7 +4,7 @@ namespace AltyaziCevirici;
 
 internal sealed class TrayApp : ApplicationContext, IAppHost
 {
-    private const string AppName = "Altyazı Çevirici";
+    private const string AppName = "Çevirmen Samet";
 
     private readonly string _settingsPath;
     private readonly AppSettings _settings;
@@ -38,6 +38,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     public TrayApp()
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+        using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
         _settingsPath = AppPaths.SettingsFile;
         _settings = AppSettings.Load(_settingsPath);
 
@@ -49,16 +50,19 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); } };
 
         _pauseItem = new ToolStripMenuItem("Duraklat (F9)", null, (_, _) => SafeRun(TogglePause, "pause"));
-        _runItem = new ToolStripMenuItem("Başlat", null, (_, _) => SafeRun(ToggleRun, "run")) { Font = new Font(SystemFonts.MenuFont ?? Control.DefaultFont, FontStyle.Bold) };
-        var showItem = new ToolStripMenuItem("Göster", null, (_, _) => SafeRun(ShowMain, "show"));
+        _runItem = new ToolStripMenuItem("Başlat", null, (_, _) => SafeRun(ToggleRun, "run"));
+        var showItem = new ToolStripMenuItem("Göster", null, (_, _) => SafeRun(ShowMain, "show")) { Font = Ui.Theme.BodySemi };
 
-        var menu = new ContextMenuStrip();
+        var menu = new ContextMenuStrip { ShowImageMargin = false, Font = Ui.Theme.Body };
+        Ui.Menus.Style(menu);
         menu.Items.Add(showItem);
         menu.Items.Add(_runItem);
         menu.Items.Add(new ToolStripMenuItem("Bölge Seç (F8)", null, (_, _) => SafeRun(SelectRegion, "select")));
         menu.Items.Add(_pauseItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Çıkış (F10)", null, (_, _) => SafeRun(Quit, "quit")));
+        foreach (ToolStripItem item in menu.Items)
+            if (item is ToolStripMenuItem) item.Padding = new Padding(Ui.Theme.D(4), Ui.Theme.D(5), Ui.Theme.D(16), Ui.Theme.D(5));
 
         _icon = IconFactory.Tray(false);
         _tray = new NotifyIcon { Icon = _icon, Text = AppName, ContextMenuStrip = menu, Visible = true };
@@ -80,6 +84,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     private void Start()
     {
+        IconFactory.RefreshShellIcon();
         _center = new MainWindow(this);
         _center.Show();
         YenidenYukleOcr();
@@ -362,23 +367,20 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         if (old != null && !ReferenceEquals(old, next)) old.Dispose();
     }
 
-    public void BeginPlacementEdit()
-    {
-        bool wasRunning = IsRunning;
-        if (wasRunning) StopLoop();
-        _overlay.HideText();
-        var copy = _settings.Clone();
-        using var editor = new PlacementEditorForm(copy, Region, "Örnek çeviri: Siktir, Port Gellhorn'a geç kaldık!");
-        if (editor.ShowDialog(_center) == DialogResult.OK)
-            Apply(copy, persist: true);
-        if (wasRunning) StartLoop();
-        else ShowPreview();
-    }
-
     public void Apply(AppSettings e, bool persist)
     {
         var oldOptions = System.Text.Json.JsonSerializer.Serialize(_settings.ToProcessorOptions());
         string oldSource = _settings.KaynakDil;
+        var oldRegion = Region;
+
+        // OCR strip edited on the preview (not only through F8).
+        if (e.RegionWidth >= 20 && e.RegionHeight >= 10)
+        {
+            _settings.RegionX = e.RegionX;
+            _settings.RegionY = e.RegionY;
+            _settings.RegionWidth = e.RegionWidth;
+            _settings.RegionHeight = e.RegionHeight;
+        }
 
         _settings.KaynakDil = e.KaynakDil;
         _settings.HedefDil = e.HedefDil;
@@ -390,6 +392,18 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.OverlayKonumu = e.OverlayKonumu;
         _settings.DikeyKaydirma = e.DikeyKaydirma;
         _settings.DisCizgi = e.DisCizgi;
+        _settings.DisCizgiRengi = e.DisCizgiRengi;
+        _settings.YaziTipi = e.YaziTipi;
+        _settings.OrijinalKilitli = e.OrijinalKilitli;
+        _settings.CeviriKilitli = e.CeviriKilitli;
+        _settings.KaynakPencere = e.KaynakPencere;
+        _settings.PencereX = e.PencereX;
+        _settings.PencereY = e.PencereY;
+        _settings.PencereGenislik = e.PencereGenislik;
+        _settings.PencereYukseklik = e.PencereYukseklik;
+        _settings.PencereBuyuk = e.PencereBuyuk;
+        _settings.SonSayfa = e.SonSayfa;
+        _settings.WindowsIleBaslat = e.WindowsIleBaslat;
         _settings.KonumAyarlandi = e.KonumAyarlandi;
         _settings.BolgeyiTakipEt = e.BolgeyiTakipEt;
         _settings.OnAyar = e.OnAyar;
@@ -428,6 +442,10 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             StopLoop();
             YenidenYukleOcr();
             if (wasRunning && !OcrPaketiEksik) StartLoop();
+        }
+        else if (Region != oldRegion && _loopTask != null && !_selecting)
+        {
+            StartLoop(); // the capture loop holds the region it started with
         }
 
         if (persist) SaveSettings();

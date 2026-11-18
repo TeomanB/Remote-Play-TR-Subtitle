@@ -1,0 +1,72 @@
+@@TITLEBAR
+<div class="titlebar"><svg class="tb-ico"><use href="#mascot"/></svg><span>Altyazı Çevirici</span>
+  <div class="tb-btns"><button aria-label="Küçült"><svg class="ico"><use href="#i-min"/></svg></button><button aria-label="Büyüt"><svg class="ico"><use href="#i-max"/></svg></button><button aria-label="Kapat"><svg class="ico"><use href="#i-x"/></svg></button></div>
+</div>
+@@STAGE
+<div class="stage">
+  <svg class="scene"><use href="#scene"/></svg>
+  <div class="game-sub" data-text="orig"></div>
+  <div class="box box-trans" data-box="trans"><span class="box-tag"><svg class="ico tag-lock"><use href="#i-lock"/></svg>Çeviri</span><div class="box-body"><span class="sub-tr" data-text="trans"></span></div></div>
+  <div class="box box-orig" data-box="orig"><span class="box-tag"><svg class="ico tag-lock"><use href="#i-lock"/></svg>Orijinal altyazı</span></div>
+</div>
+@@SOURCE
+<div class="source">
+  <label>Kaynak<select class="select"><option>PS Remote Play penceresi</option><option>Tüm ekran</option><option>Chiaki penceresi</option><option>Başka bir pencere seç…</option></select></label>
+  <label>Monitör<select class="select"><option>Monitör 1 · 2560 × 1440</option><option>Monitör 2 · 1920 × 1080</option></select></label>
+</div>
+@@GEO
+<div class="form geo">
+  <div class="seg"><button data-select="orig"><i class="key o"></i>Orijinal altyazı</button><button data-select="trans"><i class="key t"></i>Çeviri</button></div>
+  <div class="field"><span class="lbl">Konum</span>
+    <div class="geo-grid"><label class="num"><span>X</span><input type="number" data-geo="x" aria-label="X"><em>px</em></label><label class="num"><span>Y</span><input type="number" data-geo="y" aria-label="Y"><em>px</em></label></div></div>
+  <div class="field"><span class="lbl">Boyut</span>
+    <div class="geo-grid"><label class="num"><span>G</span><input type="number" data-geo="w" aria-label="Genişlik"><em>px</em></label><label class="num"><span>Y</span><input type="number" data-geo="h" aria-label="Yükseklik"><em>px</em></label></div></div>
+  <button class="btn" data-act="reset-box"><svg class="ico sm"><use href="#i-reset"/></svg>Varsayılana döndür</button>
+</div>
+@@LOOK
+<div class="form">
+  <label class="field"><span class="lbl">Yazı tipi</span>
+    <select class="select" data-var="--sub-font">
+      <option value="'Segoe UI Variable Display','Segoe UI',sans-serif">Segoe UI</option>
+      <option value="Bahnschrift,'Segoe UI',sans-serif">Bahnschrift</option>
+      <option value="'Trebuchet MS',sans-serif">Trebuchet MS</option>
+      <option value="Georgia,serif">Georgia</option>
+      <option value="'Comic Sans MS',cursive">Comic Sans</option>
+    </select></label>
+  <label class="field"><span class="lbl">Boyut <b data-out="--sub-size" data-unit=" pt"></b></span><input type="range" min="24" max="72" data-var="--sub-size"></label>
+  <div class="field"><span class="lbl">Yazı rengi</span>
+    <div class="swatches">
+      <button class="sw" style="--c:#FFFFFF" data-swatch="--sub-color" data-value="#FFFFFF" aria-label="Beyaz"></button>
+      <button class="sw" style="--c:#FFE45C" data-swatch="--sub-color" data-value="#FFE45C" aria-label="Sarı"></button>
+      <button class="sw" style="--c:#7DF3EC" data-swatch="--sub-color" data-value="#7DF3EC" aria-label="Turkuaz"></button>
+      <button class="sw" style="--c:#9BFF8A" data-swatch="--sub-color" data-value="#9BFF8A" aria-label="Yeşil"></button>
+      <button class="sw" style="--c:#FFB3D1" data-swatch="--sub-color" data-value="#FFB3D1" aria-label="Pembe"></button>
+      <label class="sw pick" title="Özel renk"><input type="color" data-var="--sub-color" value="#ffffff" aria-label="Özel yazı rengi"></label>
+    </div></div>
+  <div class="field"><span class="lbl">Dış çizgi <b data-out="--sub-ow" data-unit=" px"></b></span>
+    <div class="swatches">
+      <button class="sw" style="--c:#000000" data-swatch="--sub-outline" data-value="#000000" aria-label="Siyah"></button>
+      <button class="sw" style="--c:#1F2A44" data-swatch="--sub-outline" data-value="#1F2A44" aria-label="Lacivert"></button>
+      <button class="sw" style="--c:#086E6B" data-swatch="--sub-outline" data-value="#086E6B" aria-label="Koyu turkuaz"></button>
+      <button class="sw" style="--c:#7A1F3D" data-swatch="--sub-outline" data-value="#7A1F3D" aria-label="Bordo"></button>
+      <label class="sw pick" title="Özel renk"><input type="color" data-var="--sub-outline" value="#000000" aria-label="Özel dış çizgi rengi"></label>
+    </div>
+    <input type="range" min="0" max="6" step="1" data-var="--sub-ow" aria-label="Dış çizgi kalınlığı"></div>
+  <label class="field"><span class="lbl">Arka plan opaklığı <b data-out="--sub-bg" data-fmt="pct"></b></span><input type="range" min="0" max="1" step=".05" data-var="--sub-bg"></label>
+</div>
+@@DICT
+<div class="dict">
+  <label class="search"><svg class="ico sm"><use href="#i-search"/></svg><input data-pack-search placeholder="Paket veya terim ara" aria-label="Sözlükte ara"></label>
+  <div class="sec-h">Oyun paketleri</div>
+  <div class="list" data-packs></div>
+  <div class="sec-h">Terimlerim</div>
+  <form class="term-form" data-term-form><input class="input" placeholder="İngilizce" aria-label="İngilizce terim" required><svg class="ico sm"><use href="#i-arrow"/></svg><input class="input" placeholder="Türkçe" aria-label="Türkçe karşılık" required><button class="btn icon primary" aria-label="Terim ekle"><svg class="ico sm"><use href="#i-plus"/></svg></button></form>
+  <div class="list" data-terms></div>
+  <label class="opt"><span><b>Büyük harfli özel isimleri çevirme</b><small>“Vice City”, “Marco” gibi adlar olduğu gibi kalır.</small></span><span class="switch"><input type="checkbox" checked><i></i></span></label>
+</div>
+@@ADV
+<div class="adv">
+  <div class="set"><span class="set-i"><svg class="ico"><use href="#i-sync"/></svg></span><span class="set-t"><b>Güncellemeler</b><small data-upd>Sürüm 1.4.2 · son denetim dün</small></span><button class="btn" data-act="check-update">Denetle</button></div>
+  <div class="set"><span class="set-i"><svg class="ico"><use href="#i-globe"/></svg></span><span class="set-t"><b>OCR dil paketi</b><small>İngilizce (en-US) · Windows OCR</small><span class="badge warn" data-ocr>Kurulu değil</span><span class="bar" hidden><i></i></span></span><button class="btn primary" data-act="install-ocr">Kur</button></div>
+  <label class="set"><span class="set-i"><svg class="ico"><use href="#i-power"/></svg></span><span class="set-t"><b>Windows açılınca başlat</b><small>Oturum açtığında arka planda hazır bekler.</small></span><span class="switch"><input type="checkbox"><i></i></span></label>
+</div>

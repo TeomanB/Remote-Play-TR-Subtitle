@@ -20,7 +20,6 @@ internal interface IAppHost
     void StartCapture();
     void StopCapture();
     void ShowPreview();
-    void BeginPlacementEdit();
     void ShowMain();
     void NotifyMinimizedToTray();
     void SkipRelease(string tag);
