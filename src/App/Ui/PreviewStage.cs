@@ -173,15 +173,44 @@ internal sealed class PreviewStage : Control
         return i == Goal ? Theme.Hex(0x7A4FBF) : i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
     }
 
-    private RectangleF TagRect(int i)
+    private IEnumerable<int> TagOrder()
+    {
+        yield return Orig;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraCapture + i;
+        yield return Trans;
+        yield return Goal;
+        for (int i = 0; i < _extras.Count; i++) yield return ExtraOverlay + i;
+    }
+
+    /// <summary>Capture tags sit inside the box. Translation tags sit above it. Later tags step down so two labels never share a pixel.</summary>
+    private RectangleF TagRect(int wanted)
+    {
+        var placed = new List<RectangleF>();
+        RectangleF found = RectangleF.Empty;
+        foreach (int i in TagOrder())
+        {
+            if (Get(i).IsEmpty) continue;
+            var tag = ProposeTag(i, placed);
+            placed.Add(tag);
+            if (i == wanted) found = tag;
+        }
+        return found;
+    }
+
+    private RectangleF ProposeTag(int i, List<RectangleF> placed)
     {
         var b = ToClient(Get(i));
         string text = LabelOf(i);
-        int w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (IsLocked(i) ? Theme.D(14) : 0);
+        float w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (IsLocked(i) ? Theme.D(14) : 0);
         float h = Theme.D(19);
-        float y = b.Y - h - Theme.D(5);
-        if (y < Theme.D(2)) y = b.Bottom + Theme.D(5);
-        return new RectangleF(b.X - 1, y, w, h);
+        bool capture = i == Orig || (i >= ExtraCapture && i < ExtraOverlay);
+        float x = capture ? b.X + Theme.D(4) : b.X;
+        float y = capture ? b.Y + Theme.D(4) : b.Y - h - Theme.D(4);
+        w = Math.Min(w, Math.Max(Theme.D(40), b.Width - Theme.D(8)));
+        var tag = new RectangleF(x, y, w, h);
+        for (int n = 0; n < 8 && placed.Any(p => p.IntersectsWith(RectangleF.Inflate(tag, 2, 2))); n++)
+            tag.Y += h + Theme.D(2);
+        return tag;
     }
 
     private static PointF[] HandlePoints(RectangleF b) => new PointF[]
@@ -468,14 +497,23 @@ internal sealed class PreviewStage : Control
         if (string.IsNullOrWhiteSpace(text)) return;
 
         string family = SubtitleFonts.Resolve(_look.YaziTipi);
-        float em = Math.Max(4f, _look.YaziBoyutu * k);
-        using var font = new Font(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near };
-        float padX = 18 * k;
-        var layout = new RectangleF(b.X + padX, b.Y, Math.Max(10, b.Width - 2 * padX), b.Height);
-        var size = g.MeasureString(text, font, (int)layout.Width, fmt);
-        layout.Y = b.Y + Math.Max(0, (b.Height - size.Height) / 2f);
-        layout.Height = Math.Max(size.Height + 2, b.Height);
+        float padX = Math.Max(6f, 12 * k);
+        float padY = Math.Max(2f, 4 * k);
+        float maxW = Math.Max(10, b.Width - 2 * padX);
+        float maxH = Math.Max(8, b.Height - 2 * padY);
+        using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        float em = Math.Max(8f, _look.YaziBoyutu * k);
+        Font font = new(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
+        SizeF size = g.MeasureString(text, font, (int)maxW, fmt);
+        while (em > 8f && size.Height > maxH)
+        {
+            em -= 1f;
+            font.Dispose();
+            font = new Font(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
+            size = g.MeasureString(text, font, (int)maxW, fmt);
+        }
+        using var _font = font;
+        var layout = new RectangleF(b.X + padX, b.Y + Math.Max(0, (b.Height - size.Height) / 2f), maxW, Math.Max(size.Height, maxH));
 
         var state = g.Save();
         g.SetClip(RectangleF.Inflate(b, 2, 2), CombineMode.Intersect);

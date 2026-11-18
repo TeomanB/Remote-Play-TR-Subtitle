@@ -107,11 +107,11 @@ internal sealed partial class MainWindow
         _extraList.Toggled += (_, e) => SetExtraEnabled(e.Index, e.On);
         _addArea.Click += (_, _) => AddExtra();
         _removeArea.Click += (_, _) => RemoveExtra();
-        _areaName.Committed += (_, _) => RenameExtra(_areaName.Value);
+        _areaName.Committed += (_, _) => { if (_boundExtra >= 0) RenameExtra(_boundExtra, _areaName.Value); };
         _areaOn.CheckedChanged += (_, _) =>
         {
-            int i = PreviewStage.ExtraIndexOf(_stage.Selected);
-            if (i >= 0) SetExtraEnabled(i, _areaOn.Checked);
+            if (_extraBind || _boundExtra < 0) return;
+            SetExtraEnabled(_boundExtra, _areaOn.Checked);
         };
 
         _areasPage = new InspectorPage("Alanlar", "Ana şerit kutuları ve ek yakalama alanları.", (p, w, y) =>
@@ -131,6 +131,7 @@ internal sealed partial class MainWindow
             y += OptionBox(p, y, w, "Bu alanı oku", "Kapalıyken bu bölge okunmaz ve çevirisi gizlenir.", _areaOn) + Theme.D(16);
             InspectorPage.Put(_boxSeg, 0, y, w, Theme.D(34));
             y += Theme.D(34) + Theme.D(18);
+            y = p.AddLabel(y, w, _boxCaption);
             y = p.AddLabel(y, w, "Konum");
             InspectorPage.PutInput(_gx, 0, y, col, fh);
             InspectorPage.PutInput(_gy, col + Theme.D(8), y, w - col - Theme.D(8), fh);

@@ -931,6 +931,7 @@ internal sealed partial class MainWindow : Form
         _chipTrans.Active = sel == PreviewStage.Trans;
         _chipOrig.Locked = _stage.IsLocked(PreviewStage.Orig);
         _chipTrans.Locked = _stage.IsLocked(PreviewStage.Trans);
+        _boxCaption = BoxCaption(sel);
         _boxSeg.SetSilently(sel <= PreviewStage.Goal ? sel : -1);
         bool extra = PreviewStage.ExtraIndexOf(sel) >= 0;
         _lockToggle.Enabled = !extra;
@@ -942,6 +943,24 @@ internal sealed partial class MainWindow : Form
         RefreshGeometryFields();
     }
 
+    private int _boundExtra = -1;
+    private bool _extraBind;
+    private string _boxCaption = "Çeviri kutusu";
+
+    private string BoxCaption(int sel)
+    {
+        if (sel == PreviewStage.Orig) return "Orijinal altyazı kutusu";
+        if (sel == PreviewStage.Trans) return "Çeviri kutusu";
+        if (sel == PreviewStage.Goal) return "Görev kutusu";
+        int ex = PreviewStage.ExtraIndexOf(sel);
+        if (ex >= 0 && ex < _stage.ExtraCount)
+        {
+            string name = string.IsNullOrWhiteSpace(_stage.Extra(ex).Name) ? "Ek alan" : _stage.Extra(ex).Name.Trim();
+            return sel >= PreviewStage.ExtraOverlay ? name + " · çeviri kutusu" : name + " · okuma alanı";
+        }
+        return "Kutu";
+    }
+
     private void RefreshExtraEditor()
     {
         var rows = new List<AreaList.Row>();
@@ -950,12 +969,17 @@ internal sealed partial class MainWindow : Form
             var e = _stage.Extra(i);
             rows.Add(new AreaList.Row(e.Name, e.ColorHex, e.Enabled));
         }
-        int sel = PreviewStage.ExtraIndexOf(_stage.Selected);
+        int fromStage = PreviewStage.ExtraIndexOf(_stage.Selected);
+        if (fromStage >= 0) _boundExtra = fromStage;
+        else if (_boundExtra >= _stage.ExtraCount) _boundExtra = _stage.ExtraCount - 1;
+        if (_boundExtra < 0 && _stage.ExtraCount > 0) _boundExtra = 0;
+        int sel = _boundExtra;
         _extraList.Set(rows, sel);
         _addArea.Enabled = _stage.ExtraCount < EkAlan.EnFazla;
         _removeArea.Enabled = sel >= 0;
         _areaName.Enabled = sel >= 0;
         _areaOn.Enabled = sel >= 0;
+        _extraBind = true;
         if (sel >= 0)
         {
             var e = _stage.Extra(sel);
@@ -967,6 +991,7 @@ internal sealed partial class MainWindow : Form
             if (!_areaName.Box.Focused) _areaName.SetText("");
             _areaOn.SetSilently(false);
         }
+        _extraBind = false;
         if (_scroll.Page == _areasPage) _scroll.Relayout();
     }
 
@@ -996,7 +1021,7 @@ internal sealed partial class MainWindow : Form
 
     private void RemoveExtra()
     {
-        int sel = PreviewStage.ExtraIndexOf(_stage.Selected);
+        int sel = _boundExtra;
         if (sel < 0) return;
         var all = new List<PreviewExtra>();
         for (int i = 0; i < _stage.ExtraCount; i++) if (i != sel) all.Add(_stage.Extra(i).Copy());
@@ -1006,11 +1031,10 @@ internal sealed partial class MainWindow : Form
         SyncSelection();
     }
 
-    private void RenameExtra(string name)
+    private void RenameExtra(int index, string name)
     {
-        int sel = PreviewStage.ExtraIndexOf(_stage.Selected);
-        if (sel < 0) return;
-        var e = _stage.Extra(sel);
+        if (index < 0 || index >= _stage.ExtraCount) return;
+        var e = _stage.Extra(index);
         e.Name = string.IsNullOrWhiteSpace(name) ? e.Name : name.Trim();
         SaveRegions(showOverlay: false);
         SyncSelection();
@@ -1020,7 +1044,6 @@ internal sealed partial class MainWindow : Form
     {
         if (index < 0 || index >= _stage.ExtraCount) return;
         _stage.Extra(index).Enabled = on;
-        _stage.Select(PreviewStage.ExtraOverlay + index);
         SaveRegions(showOverlay: false);
         SyncSelection();
     }
@@ -1145,13 +1168,13 @@ internal sealed partial class MainWindow : Form
                     Renk = EkAlan.Palet[0],
                     RegionX = src.X + src.Width * 3 / 100,
                     RegionY = src.Y + src.Height * 4 / 100,
-                    RegionWidth = Math.Max(180, src.Width * 30 / 100),
-                    RegionHeight = Math.Max(40, src.Height * 7 / 100),
+                    RegionWidth = Math.Max(200, src.Width * 26 / 100),
+                    RegionHeight = Math.Max(36, src.Height * 6 / 100),
                     KonumAyarlandi = true,
                     KutuX = src.X + src.Width * 3 / 100,
-                    KutuY = src.Y + src.Height * 18 / 100,
-                    KutuGenislik = Math.Max(SubtitleLayout.MinWidth, src.Width * 34 / 100),
-                    KutuYukseklik = Math.Max(52, src.Height * 8 / 100),
+                    KutuY = src.Y + src.Height * 16 / 100,
+                    KutuGenislik = Math.Max(SubtitleLayout.MinWidth, src.Width * 42 / 100),
+                    KutuYukseklik = Math.Max(84, src.Height * 12 / 100),
                 },
             };
         });
