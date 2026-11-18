@@ -1,0 +1,15 @@
+﻿Altyazı Çevirici, ekrandaki İngilizce altyazıyı okuyup Türkçesini gösterir.
+
+Kurulum yönetici istemez ve yalnızca senin hesabına yapılır.
+Varsayılan klasör: %LocalAppData%\Programs\AltyaziCevirici
+Başlat menüsüne kısayol eklenir. Masaüstü kısayolu isteğe bağlıdır.
+Kaldırmak için Windows'un uygulama listesini kullan.
+
+Ayarlar (ayarlar.json) ve hata.log, kurulum klasörü yazılabildiği için programın yanında durur.
+Program Files gibi yazılamayan bir klasöre kopyalanırsa ikisi de %AppData%\AltyaziCevirici altına yazılır.
+
+İngilizce metin tanıma (OCR) paketi gerekir. Yönetici PowerShell:
+
+Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"
+
+Sonraki sayfada bu komut isteğe bağlıdır. Kutuyu boş bırakırsan ya da yönetici iznini reddedersen kurulum yine tamamlanır.

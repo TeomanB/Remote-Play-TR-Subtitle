@@ -1,0 +1,99 @@
+﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.2 - ayarlar penceresi, küfür ve isim düzeltmesi)
+===========================
+
+Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
+(PS Remote Play + GTA 6 için hazırlandı.)
+
+KURULUM
+- Kurulum (AltyaziCevirici-Setup-....exe): yönetici istemez, yalnızca senin hesabına kurulur.
+  Varsayılan klasör %LocalAppData%\Programs\AltyaziCevirici. Başlat menüsüne kısayol ekler,
+  istersen masaüstü kısayolu da koyar, Windows'tan kaldırılır.
+  Sihirbaz İngilizce OCR paketini yüklemeyi önerebilir. Kutuyu işaretlemezsen, ya da açılan
+  yönetici penceresinde Hayır dersen, kurulum yine tamamlanır.
+- Taşınabilir sürüm: AltyaziCevirici.exe'yi istediğin bir klasöre koy (ör. Masaüstü\AltyaziCevirici).
+  Ayrı bir kurulum gerekmez.
+- Ayarlar "ayarlar.json" dosyasına kaydedilir. Programın klasörü yazılabiliyorsa dosya exe'nin
+  yanına yazılır (taşınabilir kopya ve varsayılan kullanıcı kurulumu böyle çalışır). Klasör
+  yazılamıyorsa (Program Files) ayarlar ve hata.log şu klasöre gider:
+  %AppData%\AltyaziCevirici
+  (C:\Users\<ad>\AppData\Roaming\AltyaziCevirici).
+- İlk açılışta Windows SmartScreen uyarı verebilir: "Ek bilgi" > "Yine de çalıştır".
+- İnternet bağlantısı gerekir (çeviri Google Çeviri ile yapılır).
+
+İLK ÇALIŞTIRMA
+1) PS Remote Play'i aç, oyunu başlat. Remote Play penceresini istediğin boyuta getir
+   (tam ekran ya da pencere). Pencerenin yerini/boyutunu sonra değiştirirsen bölgeyi yeniden seç.
+2) AltyaziCevirici.exe'yi çalıştır. Ekran donuk görünür: altyazının çıktığı alt şeridi
+   fareyle sürükleyerek seç (iki satırlık altyazıya yetecek kadar geniş ve yüksek seç).
+3) Türkçe çeviri, seçtiğin alanın üstünde koyu bir kutuda görünür. Altyazı kaybolunca
+   2 saniye sonra kutu da kaybolur.
+
+KISAYOL TUŞLARI
+- F8  : Altyazı bölgesini yeniden seç
+- F9  : Duraklat / devam et
+- F10 : Çıkış
+- Saatin yanındaki kırmızı "TR" simgesine ÇİFT TIKLA: Ayarlar penceresi açılır.
+- Simgeye SAĞ TIKLA: Ayarlar, bölge seç, duraklat, çıkış.
+
+YENİ: AYARLAR PENCERESİ (1.2)
+Değişiklikler anında uygulanır. "Kaydet" ya da pencereyi kapatmak kaydeder, "Vazgeç" eski haline döndürür.
+- Genel: altyazı bölgesini yeniden seç, duraklat/devam et, altyazı dili ve çeviri dili,
+  cümle ortasındaki isimleri koruma, beyaz yazı filtresi.
+  (Beyaz yazı filtresi sadece beyaz yazıyı okur, arka plan karışıkken daha iyi çalışır.
+  Altyazı renkliyse ya da hiç okunmuyorsa kapatıp dene.)
+- Görünüm: yazı boyutu, yazı rengi (hazır renkler ya da "Renk seç"), arka plan opaklığı (%0 = kutusuz),
+  çeviri konumu (bölgenin üstünde / altında / altyazının üzerinde), dikey kaydırma (piksel).
+  "Önizleme göster" ile örnek bir yazıyı birkaç saniye görebilirsin.
+- Sözlük: oyundaki yer ve kişi adları gibi özel kelimeler. Sol sütuna ekranda görünen İngilizce
+  kelimeyi, sağa istediğin Türkçe çıktıyı yaz. Sağı boş bırakırsan kelime olduğu gibi kalır.
+  Örnek: "Port Gellhorn" → boş (böylece "Gellhorn Limanı" diye çevrilmez), "Blackwater" → "Karasu".
+  Türkçe ekler otomatik düzeltilir: "Port Gellhorn'da", "Vice City'ye", "Lucia'yla".
+  "Satır ekle" / "Seçili satırları sil" / "GTA 6 isimlerini ekle" düğmeleri var.
+- Kısayollar: tüm tuşların listesi.
+
+KÜFÜRLER VE İSİMLER (1.2)
+- Küfürler her zaman sansürsüz çevrilir. Google Çeviri "What the fuck are you doing?" gibi cümlelerde
+  küfrü sessizce atıyordu ("Ne yapıyorsun sen?"). Artık: "Ne yapıyorsun lan?", "Fuck!" → "Siktir!",
+  "Holy shit" → "Hassiktir", "Fuck you, asshole." → "Siktir git, göt herif.".
+- Oyun "f***", "sh*t" gibi yıldızlı yazıyorsa da doğru okunur ve çevrilir.
+- Cümle ortasında büyük harfle yazılan isimler (ör. "Meet me at Port Gellhorn") çevrilmeden korunur.
+  Cümle başındaki isimler için Sözlük'e ekleme yap. Altyazı TAMAMEN BÜYÜK HARFSE isim tahmini yapılamaz;
+  o zaman Sözlük'ü kullan.
+- Bu düzeltmeler İngilizce → Türkçe içindir; başka dil çiftlerinde sadece Sözlük uygulanır.
+
+İNGİLİZCE METİN TANIMA (OCR) PAKETİ
+Program Windows'un kendi metin tanıma özelliğini kullanır. İngilizce paketi yoksa açılışta uyarı çıkar.
+Eklemek için: Ayarlar > Zaman ve dil > Dil ve bölge > Dil ekle > "English (United States)".
+"Görüntülenen dil olarak ayarla" işaretini kaldırabilirsin; "Optik karakter tanıma" / "Temel yazma"
+seçili kalsın. Kurulumdan sonra programı yeniden aç.
+(Alternatif, Yönetici PowerShell:  Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0")
+
+İPUÇLARI
+- Oyun içinden altyazıyı açık, mümkünse büyük boy ve arka planlı seç; okuma çok daha iyi olur.
+- Bölgeyi sadece altyazı şeridine göre seç; fazla geniş alan hatalı okumaya ve gecikmeye yol açar.
+- Ekran saniyede 15 kez okunur. Altyazı ekrana gelir gelmez çevrilir: çoğu zaman 0,15-0,25 saniyede
+  Türkçesi görünür. Altyazı ekrana yavaş yavaş geliyorsa önce ilk kısmın çevirisi çıkar, cümle
+  tamamlanınca aynı kutuda güncellenir. Aynı cümle tekrar çıkarsa anında gösterilir.
+- Google çok fazla istek yüzünden çeviriyi geçici olarak keserse önce ikinci bir Google bağlantısı denenir;
+  o da olmazsa ya da internet giderse program
+  kapanmaz: İngilizce metin gri olarak gösterilir, birkaç saniye sonra kendiliğinden yeniden dener.
+
+GİZLİLİK
+- Ekran görüntüsü ya da altyazı metni kaydedilmez.
+- Sadece okunan altyazı metni çeviri için Google Çeviri'ye gönderilir.
+- Bir hata olursa program çalışmaya devam eder ve küçük "hata.log" dosyasına yalnızca
+  hatanın teknik açıklamasını yazar (altyazı metni ya da ekran görüntüsü yazılmaz, dosya 256 KB'ı geçmez).
+  Dosya, ayarlar.json ile aynı yerdedir: exe'nin klasörü yazılabiliyorsa orada, değilse
+  %AppData%\AltyaziCevirici altında. Bir sorun olursa bu dosyayı gönderebilirsin.
+
+AYAR DOSYASI
+- Tüm ayarlar ve sözlük "ayarlar.json" dosyasında durur. Eski sürümün ayar dosyası aynen çalışır
+  (bölgen ve seçimlerin korunur, yeni ayarlar varsayılanla eklenir).
+- Yazılabilen bir klasörde (exe'nin yanı) ya da, klasör korunuyorsa, %AppData%\AltyaziCevirici
+  içindedir. Kurulum sihirbazı bu dosyayı silmez.
+
+GELİŞMİŞ AYARLAR (ayarlar.json, program kapalıyken düzenle)
+- Fps: saniyedeki okuma sayısı (varsayılan 15, 1-30; bilgisayar zorlanırsa 10'a düşür)
+- BeyazEsik: beyaz yazı filtresi eşiği (varsayılan 170; yazı kayboluyorsa düşür, arka plan karışıyorsa yükselt)
+- GizlemeMs: altyazı kaybolduktan kaç ms sonra kutu gizlensin (varsayılan 2000)
+- BenzerlikEsigi: değişiklik algılama hassasiyeti (varsayılan 0.85)
