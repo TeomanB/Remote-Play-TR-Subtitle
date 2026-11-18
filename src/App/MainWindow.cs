@@ -782,12 +782,21 @@ internal sealed partial class MainWindow : Form
         }
         Rectangle goal = s.GorevKutuGenislik >= SubtitleLayout.MinWidth
             ? new Rectangle(s.GorevKutuX, s.GorevKutuY, s.GorevKutuGenislik, Math.Max(24, s.GorevKutuYukseklik))
-            : new Rectangle(src.X + src.Width * 58 / 100, src.Y + src.Height * 8 / 100, Math.Max(SubtitleLayout.MinWidth, src.Width * 28 / 100), Math.Max(36, src.Height * 7 / 100));
+            : GoalDefault(src);
         _stage.SetBox(PreviewStage.Orig, orig);
         _stage.SetBox(PreviewStage.Trans, trans);
         _stage.SetBox(PreviewStage.Goal, goal);
         _savedRegion = s.HasRegion ? orig : Rectangle.Empty;
         RefreshGeometryFields();
+    }
+
+    private static Rectangle GoalDefault(Rectangle src)
+    {
+        int w = Math.Max(SubtitleLayout.MinWidth, src.Width * 42 / 100);
+        int h = Math.Max(72, src.Height * 12 / 100);
+        int x = src.X + Math.Max(0, src.Width - w - src.Width * 8 / 100);
+        int y = src.Y + src.Height * 5 / 100;
+        return new Rectangle(x, y, Math.Min(w, src.Width), Math.Min(h, src.Height));
     }
 
     private static Rectangle CaptionRect(AppSettings s, Rectangle ocr)
@@ -993,12 +1002,12 @@ internal sealed partial class MainWindow : Form
             WindowState = FormWindowState.Normal;
             Arrange();
             ShowNav(0);
-            _stage.Select(PreviewStage.Goal);
+            _stage.Select(PreviewStage.Trans);
             SyncSelection();
             Refresh();
             SaveShot(dir, $"goal-preview-{frame.Tag}.png");
-            ShowNav(1);
-            Arrange();
+            _stage.Select(PreviewStage.Goal);
+            SyncSelection();
             Refresh();
             SaveShot(dir, $"goal-inspector-{frame.Tag}.png");
             SaveOverlayCard(dir, $"goal-overlays-{frame.Tag}.png", frame.Scale);
