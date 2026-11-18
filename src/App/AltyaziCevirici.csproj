@@ -13,7 +13,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Product>Altyazı Çevirici</Product>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -29,5 +29,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\AltyaziCevirici.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico">
+      <LogicalName>AltyaziCevirici.app.ico</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\assets\icon.png">
+      <LogicalName>AltyaziCevirici.icon.png</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

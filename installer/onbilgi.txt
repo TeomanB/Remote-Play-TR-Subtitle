@@ -8,8 +8,6 @@ Kaldırmak için Windows'un uygulama listesini kullan.
 Ayarlar (ayarlar.json) ve hata.log, kurulum klasörü yazılabildiği için programın yanında durur.
 Program Files gibi yazılamayan bir klasöre kopyalanırsa ikisi de %AppData%\AltyaziCevirici altına yazılır.
 
-İngilizce metin tanıma (OCR) paketi gerekir. Yönetici PowerShell:
-
-Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"
-
-Sonraki sayfada bu komut isteğe bağlıdır. Kutuyu boş bırakırsan ya da yönetici iznini reddedersen kurulum yine tamamlanır.
+İngilizce yazı tanıma paketi yoksa program açılınca bunu söyler. Kur'a basman yeter;
+Windows yönetici izni ister. İzni vermezsen kurulum yine tamamlanır.
+Sonraki sayfadaki kutu aynı paketi kurulum sırasında da kurabilir. İşaretlemezsen bir şey olmaz.

@@ -11,9 +11,9 @@ public sealed class AppSettings
     public int RegionY { get; set; }
     public int RegionWidth { get; set; }
     public int RegionHeight { get; set; }
-    /// <summary>Settings schema version (0 = file from v1, 2 = v1.1, 3 = v1.2).</summary>
+    /// <summary>Settings schema version (0 = file from v1, 2 = v1.1, 3 = v1.2, 4 = v1.3).</summary>
     public int Surum { get; set; }
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
     public int Fps { get; set; } = 15;
     public bool BeyazYaziFiltresi { get; set; } = true;
     public int BeyazEsik { get; set; } = 170;
@@ -35,6 +35,27 @@ public sealed class AppSettings
     public int DikeyKaydirma { get; set; }
     /// <summary>User glossary. Null in old files → defaults.</summary>
     public List<SozlukGirdisi>? Sozluk { get; set; }
+
+    // ---- v1.3 control center / free subtitle placement ----
+    /// <summary>False keeps the v1.2 anchor (above, below, or over the region).</summary>
+    public bool KonumAyarlandi { get; set; }
+    public bool BolgeyiTakipEt { get; set; } = true;
+    public AltyaziOnAyar OnAyar { get; set; } = AltyaziOnAyar.Serbest;
+    public int KutuX { get; set; }
+    public int KutuY { get; set; }
+    /// <summary>Subtitle box width. 0 = derive from the capture region.</summary>
+    public int KutuGenislik { get; set; }
+    public int BagilX { get; set; }
+    public int BagilY { get; set; }
+    /// <summary>Outline thickness in pixels. 0 draws no outline.</summary>
+    public int DisCizgi { get; set; } = 4;
+    /// <summary>Screen.DeviceName of the monitor used for presets. Empty = the region's monitor.</summary>
+    public string MonitorAdi { get; set; } = "";
+    public bool TepsiIpucuGosterildi { get; set; }
+    /// <summary>Check GitHub Releases on startup. Default on.</summary>
+    public bool AcilistaGuncellemeDenetle { get; set; } = true;
+    /// <summary>Tag the user chose to ignore, such as v1.4.0. Empty = none.</summary>
+    public string AtlananSurum { get; set; } = "";
 
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
@@ -96,12 +117,37 @@ public sealed class AppSettings
         ArkaPlanOpakligi = Math.Clamp(ArkaPlanOpakligi, 0, 100);
         DikeyKaydirma = Math.Clamp(DikeyKaydirma, -1000, 1000);
         if (!Enum.IsDefined(OverlayKonumu)) OverlayKonumu = OverlayPlacement.Ust;
+        if (!Enum.IsDefined(OnAyar)) OnAyar = AltyaziOnAyar.Serbest;
+        DisCizgi = Math.Clamp(DisCizgi, 0, 16);
+        KutuGenislik = KutuGenislik < SubtitleLayout.MinWidth ? 0 : Math.Clamp(KutuGenislik, SubtitleLayout.MinWidth, 8000);
+        KutuX = Math.Clamp(KutuX, -8000, 16000);
+        KutuY = Math.Clamp(KutuY, -8000, 16000);
+        BagilX = Math.Clamp(BagilX, -8000, 8000);
+        BagilY = Math.Clamp(BagilY, -8000, 8000);
+        MonitorAdi = CleanMonitor(MonitorAdi);
+        AtlananSurum = CleanTag(AtlananSurum);
         KaynakDil = CleanLang(KaynakDil, "en");
         HedefDil = CleanLang(HedefDil, "tr");
         if (!TryParseColor(YaziRengi, out _)) YaziRengi = "#FFFFFF";
         Sozluk ??= DefaultGlossary();
         Sozluk.RemoveAll(g => g == null || string.IsNullOrWhiteSpace(g.Ingilizce));
         foreach (var g in Sozluk) { g.Ingilizce = g.Ingilizce.Trim(); g.Turkce = (g.Turkce ?? string.Empty).Trim(); }
+    }
+
+    private static string CleanTag(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return "";
+        v = v.Trim();
+        if (v.Length > 32 || !SurumKarsilastirma.TryParse(v, out _)) return "";
+        return v.StartsWith('v') || v.StartsWith('V') ? "v" + v[1..] : "v" + v;
+    }
+
+    private static string CleanMonitor(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return "";
+        v = v.Trim();
+        if (v.Length > 64 || v.Any(c => c < 32 || c == '"')) return "";
+        return v;
     }
 
     private static string CleanLang(string? v, string def)

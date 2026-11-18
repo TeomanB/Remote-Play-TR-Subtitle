@@ -21,6 +21,8 @@ internal sealed class OverlayForm : Form
     private Color _textColor = Color.White;
     private int _bgAlpha = 165;
     private int _offsetY;
+    private int _outline = 4;
+    private AppSettings _look = new();
 
     public OverlayForm()
     {
@@ -71,9 +73,23 @@ internal sealed class OverlayForm : Form
     public void Configure(Rectangle region, AppSettings s)
     {
         Configure(region, s.OverlayKonumu, s.YaziBoyutu);
+        _look = s;
+        _outline = Math.Clamp(s.DisCizgi, 0, 16);
         _textColor = AppSettings.TryParseColor(s.YaziRengi, out var c) ? Color.FromArgb(255, c.R, c.G, c.B) : Color.White;
         _bgAlpha = (int)Math.Round(Math.Clamp(s.ArkaPlanOpakligi, 0, 100) * 2.55);
         _offsetY = s.DikeyKaydirma;
+    }
+
+    private Rectangle MonitorBounds()
+    {
+        if (!string.IsNullOrEmpty(_look.MonitorAdi))
+        {
+            foreach (var sc in Screen.AllScreens)
+                if (string.Equals(sc.DeviceName, _look.MonitorAdi, StringComparison.OrdinalIgnoreCase))
+                    return sc.Bounds;
+        }
+        var probe = _region.Width > 0 ? _region : new Rectangle(0, 0, 1, 1);
+        return Screen.FromRectangle(probe).Bounds;
     }
 
     /// <summary>Re-renders the current text with the new layout (live preview from the settings window).</summary>
@@ -88,7 +104,7 @@ internal sealed class OverlayForm : Form
     public void ShowText(string text, bool isFallback = false)
     {
         if (!IsHandleCreated) CreateHandle();
-        if (_region.Width <= 0) return;
+        if (_region.Width <= 0 && !_look.KonumAyarlandi) return;
         if (_shown && text == _lastText && isFallback == _lastFallback && _region == _lastRegion) return; // nothing changed
         _lastText = text;
         _lastFallback = isFallback;
@@ -102,29 +118,26 @@ internal sealed class OverlayForm : Form
         var font = _font;
         var fmt = _fmt;
 
-        var screen = Screen.FromRectangle(_region).Bounds;
-        int width = Math.Clamp(Math.Max(_region.Width, 500), 200, screen.Width);
+        var screenB = MonitorBounds();
+        var screen = new EkranDikdortgen(screenB.X, screenB.Y, screenB.Width, screenB.Height);
+        var region = new EkranDikdortgen(_region.X, _region.Y, _region.Width, _region.Height);
+        bool custom = _look.KonumAyarlandi && _look.KutuGenislik >= SubtitleLayout.MinWidth;
+        int width = custom
+            ? SubtitleLayout.ChooseWidth(_look, region, screen)
+            : Math.Clamp(Math.Max(_region.Width, 500), 200, Math.Max(200, screenB.Width));
         const int padX = 18, padY = 10;
-
 
         SizeF measured;
         using (var tmp = new Bitmap(1, 1))
         using (var g = Graphics.FromImage(tmp))
-            measured = g.MeasureString(text, font, width - 2 * padX, fmt);
+            measured = g.MeasureString(text, font, Math.Max(20, width - 2 * padX), fmt);
         int height = (int)Math.Ceiling(measured.Height) + 2 * padY + 6;
-        int boxWidth = Math.Min(width, (int)Math.Ceiling(measured.Width) + 2 * padX + 12);
-
-        int x = _region.Left + (_region.Width - boxWidth) / 2;
-        int y = _placement switch
-        {
-            OverlayPlacement.Alt => _region.Bottom + 6,
-            OverlayPlacement.Uzerinde => _region.Top + (_region.Height - height) / 2,
-            _ => _region.Top - height - 6,
-        } + _offsetY;
-        // Keep on screen: flip side if there is no room.
-        if (y < screen.Top) y = _offsetY == 0 ? _region.Bottom + 6 : screen.Top;
-        if (y + height > screen.Bottom) y = _offsetY == 0 ? Math.Max(screen.Top, _region.Top - height - 6) : screen.Bottom - height;
-        x = Math.Clamp(x, screen.Left, Math.Max(screen.Left, screen.Right - boxWidth));
+        int boxWidth = custom ? width : Math.Min(width, (int)Math.Ceiling(measured.Width) + 2 * padX + 12);
+        var placed = custom
+            ? SubtitleLayout.Resolve(_look, region, screen, boxWidth, height)
+            : SubtitleLayout.Legacy(_placement, region, screen, boxWidth, height, _offsetY);
+        int x = placed.X;
+        int y = placed.Y;
 
         using var bmp = new Bitmap(boxWidth, height, PixelFormat.Format32bppPArgb);
         using (var g = Graphics.FromImage(bmp))
@@ -143,8 +156,11 @@ internal sealed class OverlayForm : Form
             var layout = new RectangleF(padX, padY + 2, boxWidth - 2 * padX, height - 2 * padY);
             float emSize = g.DpiY * font.SizeInPoints / 72f;
             path.AddString(text, font.FontFamily, (int)font.Style, emSize, layout, fmt);
-            using (var outline = new Pen(Color.FromArgb(255, 0, 0, 0), Math.Max(3f, _fontSize / 7f)) { LineJoin = LineJoin.Round })
+            if (_outline > 0)
+            {
+                using var outline = new Pen(Color.FromArgb(255, 0, 0, 0), _outline) { LineJoin = LineJoin.Round };
                 g.DrawPath(outline, path);
+            }
             using (var fill = new SolidBrush(isFallback ? Color.FromArgb(255, 200, 200, 200) : _textColor))
                 g.FillPath(fill, path);
         }

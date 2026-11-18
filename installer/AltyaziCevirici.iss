@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Altyazı Çevirici"
 #ifndef MyAppVersion
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.3.0"
 #endif
 #define MyAppVersionInfo MyAppVersion + ".0"
 #define MyAppPublisher "Teo"
@@ -22,6 +22,7 @@ DisableProgramGroupPage=yes
 ; Per-user install. The default folder is writable, so ayarlar.json stays beside the exe.
 ; Copying the exe into Program Files still works: the app falls back to %AppData%\AltyaziCevirici.
 PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=commandline
 UsedUserAreasWarning=no
 OutputDir=..\artifacts
 OutputBaseFilename=AltyaziCevirici-Setup-{#MyAppVersion}
@@ -45,7 +46,7 @@ Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; GroupDescription: "Kısayollar:"; Flags: unchecked
-Name: "ocrpack"; Description: "İngilizce OCR paketini yüklemeyi dene (yönetici izni ister; Hayır dersen kurulum tamamlanır)"; GroupDescription: "Metin tanıma:"; Flags: unchecked
+Name: "ocrpack"; Description: "İngilizce yazı tanıma paketini şimdi kur (isteğe bağlı, yalnızca bu kutu işaretliyse yönetici izni ister)"; GroupDescription: "Metin tanıma:"; Flags: unchecked
 
 [Files]
 Source: "..\publish\AltyaziCevirici.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -58,6 +59,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDi
 [Run]
 ; Checkbox on the last page. Leaving it clear does not fail the install.
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Silent update (/SILENT or /VERYSILENT) has no checkbox, so start the new build after the files are replaced.
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait skipifnotsilent
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -75,15 +78,12 @@ begin
   if not ShellExec('runas', ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
        Params, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode) then
   begin
-    MsgBox('İngilizce OCR paketi yüklenmedi (yönetici izni verilmedi ya da PowerShell başlatılamadı).' + #13#10 +
-      'Kurulum yine de tamamlandı. İstersen sonra yönetici PowerShell''de şunu çalıştır:' + #13#10 + #13#10 +
-      'Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"',
+    MsgBox('İngilizce yazı tanıma paketi yüklenmedi (yönetici izni verilmedi). Kurulum yine de tamamlandı. Programı açınca Kur ile yeniden deneyebilirsin.',
       mbInformation, MB_OK);
   end
   else if ResultCode <> 0 then
   begin
-    MsgBox('İngilizce OCR paketi komutu ' + IntToStr(ResultCode) + ' koduyla bitti. Kurulum yine de tamamlandı.' + #13#10 + #13#10 +
-      'Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"',
+    MsgBox('İngilizce yazı tanıma paketi kurulamadı. Kurulum yine de tamamlandı. Programı açınca Kur ile yeniden deneyebilirsin.',
       mbInformation, MB_OK);
   end;
 end;
