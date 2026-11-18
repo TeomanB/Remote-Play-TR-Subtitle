@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<title>B — Sihirbaz</title>
+<link rel="stylesheet" href="boxes.css"/>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; }
+  body {
+    font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", Inter, sans-serif;
+    color: #1C2128; background: #F7F6F3;
+  }
+  .title {
+    height: 46px; display: flex; align-items: center; padding: 0 8px 0 18px; background: transparent;
+  }
+  .title img { width: 22px; height: 22px; }
+  .title b { margin-left: 10px; font-size: 13px; font-weight: 650; }
+  .sp { flex: 1; }
+  .winbtn { width: 46px; height: 32px; border: 0; background: transparent; color: #5C6570; font-size: 14px; }
+  .wrap { padding: 6px 72px 28px; }
+  .steps { display: flex; align-items: center; justify-content: center; gap: 0; margin: 8px 0 22px; }
+  .step { display: flex; align-items: center; gap: 10px; color: #8B93A0; font-size: 13px; font-weight: 600; }
+  .n {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    background: #fff; border: 1px solid #E1E4EA; font-size: 13px; font-weight: 700;
+  }
+  .step.done { color: #0E7C6B; }
+  .step.done .n { background: #E7F6F2; border-color: transparent; color: #0E7C6B; }
+  .step.now { color: #1C2128; }
+  .step.now .n { background: #0F8F78; color: #fff; border-color: transparent; }
+  .line { width: 56px; height: 1px; background: #E1E4EA; margin: 0 12px; }
+  .line.on { background: #9ED9CC; }
+  h1 { margin: 0; text-align: center; font-size: 28px; letter-spacing: -0.03em; font-weight: 680; }
+  .lead { margin: 8px auto 18px; text-align: center; color: #5C6570; font-size: 15px; max-width: 640px; line-height: 1.45; }
+  .card {
+    background: #fff; border-radius: 20px; padding: 12px;
+    box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 20px 50px rgba(16,24,32,.08);
+  }
+  .stage { height: 430px; border-radius: 14px; }
+  .ocr { left: 10%; top: auto; bottom: 14px; width: 80%; height: 68px; }
+  .tr { left: 14%; top: auto; bottom: 98px; width: 72%; height: 84px; }
+  .foot { display: flex; align-items: center; margin-top: 16px; }
+  .hint { color: #6B7380; font-size: 13px; }
+  .sp2 { flex: 1; }
+  .btn {
+    height: 40px; padding: 0 18px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 650;
+  }
+  .ghost { background: #fff; border: 1px solid #E1E4EA; color: #1C2128; margin-right: 8px; }
+  .go { background: #0F8F78; color: #fff; border: 0; box-shadow: 0 8px 18px rgba(15,143,120,.22); }
+</style>
+</head>
+<body>
+<div class="title">
+  <img src="../../../../assets/icon.png" alt=""/>
+  <b>Altyazı Çevirici</b>
+  <div class="sp"></div>
+  <button class="winbtn">—</button><button class="winbtn">□</button><button class="winbtn">✕</button>
+</div>
+<div class="wrap">
+  <div class="steps">
+    <div class="step done"><span class="n">✓</span>Ekran</div>
+    <div class="line on"></div>
+    <div class="step done"><span class="n">✓</span>Altyazı alanı</div>
+    <div class="line on"></div>
+    <div class="step now"><span class="n">3</span>Çeviri yeri</div>
+    <div class="line"></div>
+    <div class="step"><span class="n">4</span>Başlat</div>
+  </div>
+  <h1>Çeviri nereye gelsin?</h1>
+  <p class="lead">Turkuaz kutuyu oyunun üstünde istediğin yere taşı. Sekiz tutamaç boyutu değiştirir. Ölçüler daha sonra ayarlardan düzenlenir.</p>
+  <div class="card">
+    <div class="stage">
+      <img class="shot" src="scene.svg" alt=""/>
+      <div class="box ocr">
+        <span class="cap">Orijinal altyazı</span>
+        <span class="line">Get in the car, we're late.</span>
+        <i class="nw"></i><i class="n"></i><i class="ne"></i><i class="e"></i>
+        <i class="se"></i><i class="s"></i><i class="sw"></i><i class="w"></i>
+      </div>
+      <div class="box tr sel">
+        <span class="cap">Çeviri</span>
+        <p>Bu bir örnek altyazıdır, ayarları buradan görebilirsin.</p>
+        <i class="nw"></i><i class="n"></i><i class="ne"></i><i class="e"></i>
+        <i class="se"></i><i class="s"></i><i class="sw"></i><i class="w"></i>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="hint">Adım 3 / 4 · Kenarlara yapış kapalı</div>
+    <div class="sp2"></div>
+    <button class="btn ghost">Geri</button>
+    <button class="btn go">Devam</button>
+  </div>
+</div>
+</body>
+</html>

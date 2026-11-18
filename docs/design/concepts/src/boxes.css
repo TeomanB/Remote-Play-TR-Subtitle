@@ -1,0 +1,54 @@
+.stage { position: relative; overflow: hidden; background: #d7e4ee center/cover no-repeat; }
+.stage .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.box { position: absolute; box-sizing: border-box; }
+.box .cap {
+  position: absolute; left: 0; top: -26px;
+  font-size: 12px; font-weight: 650; letter-spacing: 0.01em;
+  padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.92);
+  box-shadow: 0 1px 2px rgba(16,24,32,.12);
+}
+.box i {
+  position: absolute; width: 12px; height: 12px; background: #fff;
+  border: 2px solid currentColor; border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(16,24,32,.28);
+}
+.box i.nw { left: -7px; top: -7px; }
+.box i.n { left: calc(50% - 7px); top: -7px; }
+.box i.ne { right: -7px; top: -7px; }
+.box i.e { right: -7px; top: calc(50% - 7px); }
+.box i.se { right: -7px; bottom: -7px; }
+.box i.s { left: calc(50% - 7px); bottom: -7px; }
+.box i.sw { left: -7px; bottom: -7px; }
+.box i.w { left: -7px; top: calc(50% - 7px); }
+.ocr {
+  border: 2px solid #E0940A; color: #E0940A;
+  background: rgba(255, 186, 64, .12);
+  border-radius: 10px;
+  display: flex; align-items: flex-end; justify-content: center; padding: 0 18px 10px;
+}
+.ocr .line {
+  color: #fff; font-weight: 750; font-size: 20px; letter-spacing: -0.02em;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #111, 0 2px 8px rgba(0,0,0,.45);
+}
+.ocr .cap { color: #8A5A00; }
+.tr {
+  border: 2px solid #14A38C; color: #14A38C;
+  background: rgba(18, 22, 28, .78);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 10px 18px;
+}
+.tr .cap { color: #0E7C6B; }
+.tr p {
+  margin: 0; color: #fff; font-weight: 650; font-size: 16px; line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.tr.sel { box-shadow: 0 0 0 4px rgba(20,163,140,.28), 0 10px 28px rgba(0,0,0,.28); }
+.en {
+  position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%);
+  color: #fff; font-weight: 750; font-size: 22px; letter-spacing: -0.02em;
+  text-shadow: 0 2px 0 #111, 0 0 8px rgba(0,0,0,.45);
+  white-space: nowrap;
+}
