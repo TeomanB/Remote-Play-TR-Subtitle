@@ -204,12 +204,17 @@ internal sealed class PreviewStage : Control
         float w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (IsLocked(i) ? Theme.D(14) : 0);
         float h = Theme.D(19);
         bool capture = i == Orig || (i >= ExtraCapture && i < ExtraOverlay);
-        float x = capture ? b.X + Theme.D(4) : b.X;
-        float y = capture ? b.Y + Theme.D(4) : b.Y - h - Theme.D(4);
-        w = Math.Min(w, Math.Max(Theme.D(40), b.Width - Theme.D(8)));
-        var tag = new RectangleF(x, y, w, h);
-        for (int n = 0; n < 8 && placed.Any(p => p.IntersectsWith(RectangleF.Inflate(tag, 2, 2))); n++)
-            tag.Y += h + Theme.D(2);
+        w = Math.Min(w, Math.Max(Theme.D(28), b.Width - Theme.D(6)));
+        h = Math.Min(h, Math.Max(Theme.D(11), b.Height - Theme.D(4)));
+        RectangleF tag = capture
+            ? new RectangleF(b.X + Theme.D(3), b.Y + Theme.D(2), w, h)
+            : new RectangleF(b.X, b.Y - h - Theme.D(3), w, h);
+        if (!capture && tag.Y < Theme.D(2)) tag.Y = b.Y + Theme.D(2);
+        for (int n = 0; n < 10 && placed.Any(p => p.IntersectsWith(RectangleF.Inflate(tag, 2, 2))); n++)
+        {
+            tag.X += Theme.D(10);
+            if (tag.X > b.Right) { tag.X = b.X; tag.Y += h + Theme.D(2); }
+        }
         return tag;
     }
 
@@ -505,7 +510,7 @@ internal sealed class PreviewStage : Control
         float em = Math.Max(8f, _look.YaziBoyutu * k);
         Font font = new(family, em, FontStyle.Bold, GraphicsUnit.Pixel);
         SizeF size = g.MeasureString(text, font, (int)maxW, fmt);
-        while (em > 8f && size.Height > maxH)
+        while (em > 6f && size.Height > maxH)
         {
             em -= 1f;
             font.Dispose();
