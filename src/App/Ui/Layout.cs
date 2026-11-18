@@ -93,9 +93,12 @@ internal sealed class InspectorPage : Panel
         return y + h + Theme.D(8);
     }
 
-    public void AddSection(int y, int width, string text)
+    public int AddSection(int y, int width, string text)
     {
-        AddText(new Rectangle(0, y, width, Theme.D(16)), text.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR")), Theme.Caption, Theme.Tx3);
+        string label = text.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        int h = Math.Max(Theme.D(16), Theme.Measure(label, Theme.Caption).Height);
+        AddText(new Rectangle(0, y, Math.Max(1, width), h), label, Theme.Caption, Theme.Tx3);
+        return h;
     }
 
     public void AddDivider(int y, int width) =>
@@ -397,7 +400,8 @@ internal sealed class PackList : UiControl
 
     public PackList() { Cursor = Cursors.Hand; }
 
-    public static int RowHeight => Theme.D(48);
+    public static int RowHeight => Math.Max(Theme.D(48),
+        Theme.Measure("Ag", Theme.BodySemi).Height + Theme.Measure("Ag", Theme.Small).Height + Theme.D(18));
 
     public void SetRows(IEnumerable<PackRow> rows)
     {
@@ -453,9 +457,11 @@ internal sealed class PackList : UiControl
             int x = t + Theme.D(10);
             int sw = Theme.D(40);
             int chev = Theme.D(18);
-            int tw = Width - x - SwitchZone - chev;
-            Theme.Text(g, row.Name, Theme.BodySemi, new Rectangle(x, y + Theme.D(6), tw, Theme.D(20)), Theme.Tx);
-            Theme.Text(g, row.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + " terim · göster", Theme.Small, new Rectangle(x, y + Theme.D(25), tw, Theme.D(16)), i == _hot && !_hotSwitch ? Theme.AccD : Theme.Tx2);
+            int nameH = Theme.Measure("Ag", Theme.BodySemi).Height;
+            int subH = Theme.Measure("Ag", Theme.Small).Height;
+            int tw = Math.Max(Theme.D(8), Width - x - SwitchZone - chev);
+            Theme.Text(g, row.Name, Theme.BodySemi, new Rectangle(x, y + Theme.D(6), tw, nameH), Theme.Tx);
+            Theme.Text(g, row.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + " terim · göster", Theme.Small, new Rectangle(x, y + Theme.D(6) + nameH, tw, subH), i == _hot && !_hotSwitch ? Theme.AccD : Theme.Tx2);
             Theme.Glyph(g, Ic.Chevron, Theme.Icon12, new Rectangle(Width - SwitchZone - chev, y, chev, rh), i == _hot && !_hotSwitch ? Theme.Tx2 : Theme.Tx3);
             DrawSwitch(g, new RectangleF(Width - sw, y + (rh - Theme.D(22)) / 2f, sw, Theme.D(22)), row.On, i == _hot);
             if (i < _rows.Count - 1)
@@ -494,7 +500,7 @@ internal sealed class TermList : UiControl
     public event Action<TermRow>? DeleteClicked;
     public string Empty { get; set; } = "";
 
-    public static int RowHeight => Theme.D(36);
+    public static int RowHeight => Math.Max(Theme.D(36), Theme.Measure("Ag", Theme.Body).Height + Theme.D(14));
 
     public void SetRows(IEnumerable<TermRow> rows)
     {
@@ -541,8 +547,9 @@ internal sealed class TermList : UiControl
             var row = _rows[i];
             int y = i * rh;
             if (i == _hot) Theme.FillRound(g, new RectangleF(-Theme.D(6), y + Theme.D(2), Width + Theme.D(12), rh - Theme.D(4)), Theme.D(8), Theme.Subtle);
-            int right = row.Pack == null ? Width - Theme.D(32) : Width - Theme.Measure(row.Pack, Theme.Small).Width - Theme.D(12);
-            int col = (right - arrow) / 2;
+            int packW = row.Pack == null ? 0 : Theme.Measure(row.Pack, Theme.Small).Width + Theme.D(8);
+            int right = Math.Max(arrow + Theme.D(16), row.Pack == null ? Width - Theme.D(32) : Width - packW - Theme.D(8));
+            int col = Math.Max(Theme.D(8), (right - arrow) / 2);
             Theme.Text(g, row.English, Theme.Body, new Rectangle(0, y, col, rh), Theme.Tx);
             Theme.Glyph(g, Ic.Arrow, Theme.Icon12, new Rectangle(col, y, arrow, rh), Theme.Tx3);
             string tr = string.IsNullOrEmpty(row.Turkish) ? "olduğu gibi" : row.Turkish;

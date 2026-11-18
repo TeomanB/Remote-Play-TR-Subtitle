@@ -39,7 +39,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     public TrayApp()
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
-        using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
+        if (Ui.Theme.ForcedScale is float forced) Ui.Theme.SetScale(forced);
+        else using (var screen = Graphics.FromHwnd(IntPtr.Zero)) Ui.Theme.SetScale(screen.DpiX / 96f);
         _settingsPath = AppPaths.SettingsFile;
         _settings = AppSettings.Load(_settingsPath);
 

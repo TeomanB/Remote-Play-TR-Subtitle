@@ -4,16 +4,16 @@
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösteren bir Windows tepsi uygulaması. PS Remote Play gibi pencerelerde seçtiğin bölgeyi Windows'un kendi metin tanımasıyla (`Windows.Media.Ocr`) okur ve ücretsiz Google Çeviri ucuyla (`translate.googleapis.com`, `client=gtx`) canlı çevirir.
 
-Sürüm **1.5.0**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir ayar yoktur. Özel isimler ve sözlük korunur.
+Sürüm **1.5.1**. Küfürler her zaman sansürsüz çevrilir; bunu kapatan bir ayar yoktur. Özel isimler ve sözlük korunur.
 
 ## İndirme
 
-Hazır dosyalar [Releases](https://github.com/TeomanB/Remote-Play-TR-Subtitle/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.5.0` gibi bir sürüm oluşturulur veya güncellenir.
+Hazır dosyalar [Releases](https://github.com/TeomanB/Remote-Play-TR-Subtitle/releases) sayfasındadır. `main` dalına her gönderimde ve elle çalıştırılan iş akışında, `.csproj` içindeki sürüme göre `v1.5.1` gibi bir sürüm oluşturulur veya güncellenir.
 
 | Dosya | Ne işe yarar |
 | --- | --- |
-| `AltyaziCevirici-Setup-1.5.0.exe` | Kullanıcı hesabına kurulum. Yönetici gerekmez. Başlat menüsü ve masaüstü kısayolu (sessiz kurulumda da) ve kaldırıcı vardır. Kurulum dili Türkçedir. |
-| `AltyaziCevirici-Portable-1.5.0.zip` | Kurulumsuz kopya: `AltyaziCevirici.exe` ve `KULLANIM.txt`. |
+| `AltyaziCevirici-Setup-1.5.1.exe` | Kullanıcı hesabına kurulum. Yönetici gerekmez. Başlat menüsü ve masaüstü kısayolu (sessiz kurulumda da) ve kaldırıcı vardır. Kurulum dili Türkçedir. |
+| `AltyaziCevirici-Portable-1.5.1.zip` | Kurulumsuz kopya: `AltyaziCevirici.exe` ve `KULLANIM.txt`. |
 
 İlk açılışta SmartScreen uyarısı çıkabilir: **Ek bilgi** → **Yine de çalıştır**. Uygulama imzalı değildir.
 
