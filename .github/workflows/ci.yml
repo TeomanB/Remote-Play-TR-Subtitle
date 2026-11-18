@@ -59,6 +59,29 @@ jobs:
       - name: Publish self-contained win-x64
         run: dotnet publish src/App/AltyaziCevirici.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish --nologo
 
+      - name: UI screenshots
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts\ui | Out-Null
+          $exe = "publish\AltyaziCevirici.exe"
+          $p = Start-Process -FilePath (Resolve-Path $exe) -WorkingDirectory (Get-Location) -ArgumentList "--screenshots","artifacts\ui" -PassThru
+          if (-not $p.WaitForExit(120000)) { try { $p.Kill() } catch {} ; throw "Screenshot process timed out" }
+          if (Test-Path "artifacts\ui\error.txt") { Get-Content "artifacts\ui\error.txt"; throw "Screenshot process wrote error.txt" }
+          if ($p.ExitCode -ne 0) { throw "Screenshot process exited $($p.ExitCode)" }
+          foreach ($name in @("01-onizleme.png","02-gorunum.png","03-sozluk.png","04-gelismis.png","05-tutamaclar.png")) {
+            $file = Join-Path "artifacts\ui" $name
+            if (-not (Test-Path $file)) { throw "Missing $file" }
+            if ((Get-Item $file).Length -lt 8KB) { throw "$file is too small to show the window" }
+          }
+          Write-Host "UI screenshots include both boxes and the 8 white resize handles (05-tutamaclar.png)."
+
+      - name: Upload UI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots-${{ steps.ver.outputs.version }}
+          path: artifacts/ui/*.png
+          if-no-files-found: error
+
       - name: Check publish output
         shell: pwsh
         run: |

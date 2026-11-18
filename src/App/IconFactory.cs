@@ -4,44 +4,53 @@ using System.Drawing.Imaging;
 namespace AltyaziCevirici;
 
 /// <summary>
-/// Window and tray icons from the embedded BMP .ico (GDI cannot load a PNG-compressed icon,
-/// which is why the tray kept showing the old red TR mark).
+/// Tray and window icons are painted from the embedded PNG. System.Drawing.Icon on the
+/// multi-size .ico was still showing the old red "TR" mark on the owner's taskbar.
 /// </summary>
 internal static class IconFactory
 {
-    private static readonly List<MemoryStream> Kept = new();
+    public static Icon Window() => Make(48, status: false, running: false);
 
-    public static Icon Window() => Load(new Size(48, 48));
+    public static Icon Tray(bool running) => Make(32, status: true, running);
 
-    public static Icon Tray(bool running)
+    private static Icon Make(int size, bool status, bool running)
     {
-        using var icon = Load(new Size(32, 32));
-        using var bmp = new Bitmap(icon.ToBitmap());
+        using var src = LoadPng();
+        using var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bmp))
         {
+            g.Clear(Color.Transparent);
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            int dot = Math.Max(6, bmp.Width / 4);
-            int margin = Math.Max(1, bmp.Width / 16);
-            var rect = new Rectangle(bmp.Width - dot - margin, bmp.Height - dot - margin, dot, dot);
-            using var fill = new SolidBrush(running ? Color.FromArgb(255, 48, 196, 96) : Color.FromArgb(255, 150, 156, 166));
-            using var ring = new Pen(Color.FromArgb(230, 16, 18, 22), 1.5f);
-            g.FillEllipse(fill, rect);
-            g.DrawEllipse(ring, rect);
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.DrawImage(src, new Rectangle(0, 0, size, size));
+            if (status)
+            {
+                int dot = Math.Max(6, size / 4);
+                int margin = Math.Max(1, size / 16);
+                var rect = new Rectangle(size - dot - margin, size - dot - margin, dot, dot);
+                using var fill = new SolidBrush(running ? Color.FromArgb(255, 48, 196, 96) : Color.FromArgb(255, 150, 156, 166));
+                using var ring = new Pen(Color.FromArgb(230, 16, 18, 22), 1.5f);
+                g.FillEllipse(fill, rect);
+                g.DrawEllipse(ring, rect);
+            }
         }
         IntPtr handle = bmp.GetHicon();
-        var created = (Icon)Icon.FromHandle(handle).Clone();
-        Native.DestroyIcon(handle);
-        return created;
+        try
+        {
+            return (Icon)Icon.FromHandle(handle).Clone();
+        }
+        finally
+        {
+            Native.DestroyIcon(handle);
+        }
     }
 
-    private static Icon Load(Size size)
+    private static Bitmap LoadPng()
     {
-        using var resource = typeof(IconFactory).Assembly.GetManifestResourceStream("AltyaziCevirici.app.ico")
-            ?? throw new InvalidOperationException("app.ico");
-        var copy = new MemoryStream();
-        resource.CopyTo(copy);
-        copy.Position = 0;
-        Kept.Add(copy);
-        return new Icon(copy, size);
+        using var resource = typeof(IconFactory).Assembly.GetManifestResourceStream("AltyaziCevirici.icon.png")
+            ?? throw new InvalidOperationException("icon.png");
+        using var raw = new Bitmap(resource);
+        return new Bitmap(raw);
     }
 }

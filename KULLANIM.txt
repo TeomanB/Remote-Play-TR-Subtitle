@@ -1,4 +1,4 @@
-﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.4 - önizleme tuvali ve sözlük paketleri)
+﻿ALTYAZI ÇEVİRİCİ - KULLANIM  (sürüm 1.5 - serbest kutular, 8 tutamaç)
 ===========================
 
 Ekrandaki İngilizce altyazıyı okuyup Türkçesini oyunun üstünde gösterir.
@@ -23,19 +23,21 @@ KURULUM
 İLK ÇALIŞTIRMA
 1) PS Remote Play'i aç, oyunu başlat. Remote Play penceresini istediğin boyuta getir.
    Pencerenin yerini sonra değiştirirsen bölgeyi yeniden seç.
-2) AltyaziCevirici.exe'yi çalıştır. Kontrol merkezi açılır; ekran kendiliğinden kararmaz.
-   "Bölge Seç"e bas, altyazının çıktığı şeridi sürükleyerek işaretle.
-   Daha önce seçtiğin bölge durur ve önizlemede görünür.
+2) AltyaziCevirici.exe'yi çalıştır. Ana pencere açılır; ekran kendiliğinden kararmaz.
+   Büyük önizlemede iki kutu vardır. Sarı kutu okunan altyazı bölgesi, turkuaz kutu
+   Türkçe yazının yeridir. Kutuyu gövdesinden sürükle. Beyaz kareler 8 tutamaçtır
+   (köşeler ve kenarlar); onlardan boyutu değiştir. En küçük kenar 32 pikseldir.
+   Altındaki X Y W H kutuları aynı ölçüleri sayı olarak yazar. "Kenarlara yapış" isteğe bağlıdır.
 3) "Başlat"a bas. Türkçe çeviri ekranda görünür. "Durdur" okumayı keser.
    Pencereyi kapatmak programı kapatmaz; saat yanındaki simgeye küçültür.
    Simgeye çift tıkla ya da menüden "Göster" de.
 
 KISAYOL TUŞLARI
-- F8  : Altyazı bölgesini seç
+- F8  : Ana pencere (kutuları tuvalde düzenle)
 - F9  : Duraklat / devam et
 - F10 : Çıkış
 - Simgeye ÇİFT TIKLA: Kontrol merkezini göster
-- Simgeye SAĞ TIKLA: Göster, başlat/durdur, bölge, duraklat, çıkış
+- Simgeye SAĞ TIKLA: Göster, başlat/durdur, ana pencere, duraklat, çıkış
 
 YENİ: AYARLAR PENCERESİ (1.2)
 Değişiklikler anında uygulanır. "Kaydet" ya da pencereyi kapatmak kaydeder, "Vazgeç" eski haline döndürür.

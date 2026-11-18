@@ -1,12 +1,28 @@
 using AltyaziCevirici.Core;
+using AltyaziCevirici.Ui;
 
 namespace AltyaziCevirici;
 
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Length >= 2 && args[0] == "--screenshots")
+        {
+            try
+            {
+                Directory.CreateDirectory(args[1]);
+                ShellWindow.ExportShots(args[1]);
+            }
+            catch (Exception ex)
+            {
+                try { File.WriteAllText(Path.Combine(args[1], "error.txt"), ex.ToString()); } catch (Exception) { }
+                Environment.Exit(1);
+            }
+            return;
+        }
+
         AppPaths.Init();
         ErrorLog.Path = AppPaths.ErrorLogFile;
         SozlukDosyasi.Yukle();

@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Altyazı Çevirici"
 #ifndef MyAppVersion
-#define MyAppVersion "1.4.0"
+#define MyAppVersion "1.5.0"
 #endif
 #define MyAppVersionInfo MyAppVersion + ".0"
 #define MyAppPublisher "Teo"
