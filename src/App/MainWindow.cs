@@ -415,7 +415,7 @@ internal sealed partial class MainWindow : Form
         for (int i = 0; i < _nav.Length; i++) _nav[i].Active = i == index;
         var page = index switch { 1 => _lookPage, 2 => _glossaryPage, 3 => _advancedPage, _ => _areasPage };
         if (index == 1) SelectBox(PreviewStage.Trans);
-        if (index == 2) FillGlossary();
+        if (index == 2) { HazirKutuphane.Yukle(); FillGlossary(); }
         _scroll.Show(page);
         _scroll.Relayout();
         if (_host.Current.SonSayfa != index) Patch(s => s.SonSayfa = index);
@@ -965,6 +965,13 @@ internal sealed partial class MainWindow : Form
     {
         using var bmp = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
         DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+        if (_tour.Visible && _tour.Width > 0 && _tour.Height > 0)
+        {
+            using var overlay = new Bitmap(_tour.Width, _tour.Height);
+            _tour.DrawToBitmap(overlay, new Rectangle(Point.Empty, overlay.Size));
+            using var g = Graphics.FromImage(bmp);
+            g.DrawImage(overlay, _tour.Location);
+        }
         bmp.Save(Path.Combine(dir, name), System.Drawing.Imaging.ImageFormat.Png);
     }
 

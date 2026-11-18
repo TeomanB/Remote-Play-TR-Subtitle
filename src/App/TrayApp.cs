@@ -14,6 +14,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private readonly OverlayForm _overlay;
     private readonly GoogleTranslator _translator = new();
     private readonly TranslationProcessor _processor;
+    private HazirKutuphane _hazir = HazirKutuphane.Bos;
     private MainWindow? _center;
     private readonly ToolStripMenuItem _runItem;
     private readonly System.Windows.Forms.Timer _previewTimer = new() { Interval = 3500 };
@@ -45,7 +46,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _overlay = new OverlayForm();
         _ = _overlay.Handle; // create handle on UI thread
 
-        _processor = new TranslationProcessor(_translator, _settings.ToProcessorOptions());
+        _hazir = HazirKutuphane.Yukle();
+        _processor = new TranslationProcessor(_translator, _settings.ToProcessorOptions(_hazir));
         _overlay.Configure(Region, _settings);
         _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); } };
 
@@ -369,7 +371,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     public void Apply(AppSettings e, bool persist)
     {
-        var oldOptions = System.Text.Json.JsonSerializer.Serialize(_settings.ToProcessorOptions());
+        var oldOptions = OptionsStamp();
         string oldSource = _settings.KaynakDil;
         var oldRegion = Region;
 
@@ -405,6 +407,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.SonSayfa = e.SonSayfa;
         _settings.WindowsIleBaslat = e.WindowsIleBaslat;
         _settings.TanitimGoruldu = e.TanitimGoruldu;
+        _settings.SeciliHazirOyun = e.SeciliHazirOyun;
+        _settings.SadeceHazirPaket = e.SadeceHazirPaket?.ToList() ?? new List<string>();
         _settings.KonumAyarlandi = e.KonumAyarlandi;
         _settings.BolgeyiTakipEt = e.BolgeyiTakipEt;
         _settings.OnAyar = e.OnAyar;
@@ -428,8 +432,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _overlay.Refresh(text, fb);
 
         // Translation rules: new options, drop cached translations, re-translate the current line.
-        var opts = _settings.ToProcessorOptions();
-        if (System.Text.Json.JsonSerializer.Serialize(opts) != oldOptions)
+        _hazir = HazirKutuphane.Yukle();
+        var opts = _settings.ToProcessorOptions(_hazir);
+        if (OptionsStamp() != oldOptions)
         {
             _processor.Options = opts;
             _cache.Clear();
@@ -477,6 +482,12 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _overlay.ShowText(MainWindow.OrnekAltyazi, false);
         _previewTimer.Stop();
         _previewTimer.Start();
+    }
+
+    private string OptionsStamp()
+    {
+        var opts = _settings.ToProcessorOptions(_hazir);
+        return System.Text.Json.JsonSerializer.Serialize(opts) + "\n" + _hazir.Imza + "\n" + (opts.Hazir?.Oyun ?? "") + ":" + (opts.Hazir?.Satir ?? 0);
     }
 
     public bool IsRunning => _loopTask != null;

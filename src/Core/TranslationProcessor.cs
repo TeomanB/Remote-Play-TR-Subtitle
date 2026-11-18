@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace AltyaziCevirici.Core;
 
 /// <summary>Live options for <see cref="TranslationProcessor"/> (swapped atomically when settings change).</summary>
@@ -5,7 +7,9 @@ public sealed record ProcessorOptions(
     string Source = "en",
     string Target = "tr",
     IReadOnlyList<SozlukGirdisi>? Glossary = null,
-    bool KeepProperNouns = true)
+    bool KeepProperNouns = true,
+    [property: JsonIgnore] HazirDizin? Hazir = null,
+    bool SadeceHazir = false)
 {
     public bool EnglishToTurkish =>
         Source.StartsWith("en", StringComparison.OrdinalIgnoreCase) && Target.StartsWith("tr", StringComparison.OrdinalIgnoreCase);
@@ -27,6 +31,7 @@ public sealed class TranslationProcessor : ITranslateBackend
     private readonly ILanguageBackend _inner;
     private volatile ProcessorOptions _options;
     private volatile TermProtector _protector;
+    private string? _onceki;
 
     public TranslationProcessor(ILanguageBackend inner, ProcessorOptions? options = null)
     {
@@ -53,6 +58,17 @@ public sealed class TranslationProcessor : ITranslateBackend
         if (opt.Target.StartsWith("tr", StringComparison.OrdinalIgnoreCase) && OcrGate.MuhtemelenTurkce(src))
             return new TranslateOutcome(TranslateStatus.Skipped);
         if (opt.Source.StartsWith("en", StringComparison.OrdinalIgnoreCase)) src = Profanity.Uncensor(src);
+        if (opt.Hazir is { } hazir)
+        {
+            var hazirTr = hazir.Ara(src, _onceki);
+            if (!string.IsNullOrEmpty(hazirTr))
+            {
+                _onceki = null;
+                return new TranslateOutcome(TranslateStatus.Ok, hazirTr);
+            }
+            _onceki = src;
+            if (opt.SadeceHazir) return new TranslateOutcome(TranslateStatus.Skipped);
+        }
 
         Profanity.Plan plan = opt.EnglishToTurkish
             ? Profanity.Analyze(src)

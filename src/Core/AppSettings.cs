@@ -84,6 +84,10 @@ public sealed class AppSettings
     public bool WindowsIleBaslat { get; set; }
     /// <summary>The first-run coach tour has been finished or skipped.</summary>
     public bool TanitimGoruldu { get; set; }
+    /// <summary>Game name of the local lines pack used for ready translations. Empty = the only loaded pack, if there is one.</summary>
+    public string SeciliHazirOyun { get; set; } = "";
+    /// <summary>Games whose misses must not call Google. A match still uses the pack.</summary>
+    public List<string>? SadeceHazirPaket { get; set; }
 
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
@@ -169,6 +173,11 @@ public sealed class AppSettings
         for (int i = 0; i < AcikPaketler.Count; i++) AcikPaketler[i] = AcikPaketler[i].Trim().ToLowerInvariant();
         Sozluk.RemoveAll(g => g == null || string.IsNullOrWhiteSpace(g.Ingilizce));
         foreach (var g in Sozluk) { g.Ingilizce = g.Ingilizce.Trim(); g.Turkce = (g.Turkce ?? string.Empty).Trim(); }
+        SeciliHazirOyun = string.IsNullOrWhiteSpace(SeciliHazirOyun) ? "" : SeciliHazirOyun.Trim();
+        if (SeciliHazirOyun.Length > 80) SeciliHazirOyun = SeciliHazirOyun[..80];
+        SadeceHazirPaket ??= new List<string>();
+        SadeceHazirPaket.RemoveAll(string.IsNullOrWhiteSpace);
+        for (int i = 0; i < SadeceHazirPaket.Count; i++) SadeceHazirPaket[i] = SadeceHazirPaket[i].Trim();
     }
 
     private static string CleanTag(string? v)
@@ -212,5 +221,11 @@ public sealed class AppSettings
         return true;
     }
 
-    public ProcessorOptions ToProcessorOptions() => new(KaynakDil, HedefDil, SozlukKutuphanesi.Etkin(this), OzelIsimleriKoru);
+    public ProcessorOptions ToProcessorOptions(HazirKutuphane? hazir = null)
+    {
+        var k = hazir ?? HazirKutuphane.Bos;
+        var dizin = k.Sec(SeciliHazirOyun);
+        bool only = dizin != null && (SadeceHazirPaket?.Any(g => g.Equals(dizin.Oyun, StringComparison.OrdinalIgnoreCase)) ?? false);
+        return new(KaynakDil, HedefDil, SozlukKutuphanesi.Etkin(this), OzelIsimleriKoru, dizin, only);
+    }
 }

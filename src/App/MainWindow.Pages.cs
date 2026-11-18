@@ -42,6 +42,9 @@ internal sealed partial class MainWindow
     private readonly UiButton _termAdd = new() { Kind = ButtonKind.Primary, Glyph = Ic.Add };
     private readonly TermList _terms = new() { Empty = "Henüz terim eklemedin." };
     private readonly UiToggle _namesToggle = new();
+    private readonly UiToggle _packOnly = new();
+    private readonly UiButton _openLines = new() { Text = "Klasörü aç", Kind = ButtonKind.Secondary };
+    private readonly LinePackList _linePacks = new();
 
     // Gelişmiş
     private readonly UiButton _updateBtn = new() { Text = "Denetle" };
@@ -319,6 +322,9 @@ internal sealed partial class MainWindow
         _export.Click += (_, _) => ExportEntries();
         _namesToggle.SetSilently(_host.Current.OzelIsimleriKoru);
         _namesToggle.CheckedChanged += (_, _) => Patch(s => s.OzelIsimleriKoru = _namesToggle.Checked);
+        _packOnly.CheckedChanged += (_, _) => SetPackOnly(_packOnly.Checked);
+        _openLines.Click += (_, _) => OpenLinesFolder();
+        _linePacks.Chosen += (_, game) => { Patch(s => s.SeciliHazirOyun = game); FillGlossary(); _scroll.Relayout(); };
 
         _gamePacks.Opened += OpenPack;
         _basePacks.Opened += OpenPack;
@@ -328,9 +334,22 @@ internal sealed partial class MainWindow
         _glossaryPage = new InspectorPage("Sözlük", "Oyuna özel terimler ve isimler doğru çevrilsin.", (p, w, y) =>
         {
             bool detail = _openPack != null;
-            foreach (var c in new Control[] { _gamePacks, _basePacks, _import, _export, _termEn, _termTr, _termAdd, _terms, _namesToggle }) c.Visible = !detail;
+            foreach (var c in new Control[] { _gamePacks, _basePacks, _import, _export, _termEn, _termTr, _termAdd, _terms, _namesToggle, _packOnly, _openLines, _linePacks }) c.Visible = !detail;
             foreach (var c in new Control[] { _packBack, _packToggle, _packTerms }) c.Visible = detail;
             if (detail) return ArrangePackDetail(p, w, y);
+
+            y = OptionBox(p, y, w, "Canlı çeviri yapma (sadece hazır paket)", "Seçili oyunda eşleşme yoksa Google'a gitmez, satır gizlenir. Eşleşen satır paketin Türkçesini gösterir.", _packOnly);
+            p.AddSection(y, w, "Hazır çeviri paketleri");
+            y += Theme.D(22);
+            if (_linePacks.Count == 0)
+                y += p.AddWrap(0, y, w, "Paket yok. json dosyalarını klasöre bırak.", Theme.Small, Theme.Tx2) + Theme.D(8);
+            else
+            {
+                InspectorPage.Put(_linePacks, 0, y, w, _linePacks.Height);
+                y += _linePacks.Height + Theme.D(8);
+            }
+            InspectorPage.Put(_openLines, 0, y, Theme.D(120), Theme.D(32));
+            y += Theme.D(32) + Theme.D(16);
 
             InspectorPage.PutInput(_search, 0, y, w, Theme.D(36));
             y += Theme.D(36) + Theme.D(18);
@@ -371,8 +390,9 @@ internal sealed partial class MainWindow
             y += OptionBox(p, y, w, "Büyük harfli özel isimleri çevirme", "“Vice City”, “Marco” gibi cümle ortasındaki adlar olduğu gibi kalır.", _namesToggle);
             return y;
         });
-        foreach (var c in new Control[] { _search, _gamePacks, _basePacks, _import, _export, _termEn, _termTr, _termAdd, _terms, _namesToggle, _packBack, _packToggle, _packTerms })
+        foreach (var c in new Control[] { _search, _gamePacks, _basePacks, _import, _export, _termEn, _termTr, _termAdd, _terms, _namesToggle, _packOnly, _openLines, _linePacks, _packBack, _packToggle, _packTerms })
             _glossaryPage.Controls.Add(c);
+        HazirKutuphane.Yukle();
         FillGlossary();
     }
 
@@ -428,6 +448,10 @@ internal sealed partial class MainWindow
         string q = _search.Value.Trim();
         bool Match(string? s) => q.Length == 0 || (s != null && s.Contains(q, StringComparison.CurrentCultureIgnoreCase));
         var s = _host.Current;
+        var hazir = HazirKutuphane.Guncel;
+        var secili = hazir.Sec(s.SeciliHazirOyun);
+        _linePacks.Set(hazir.Paketler, secili?.Oyun ?? "");
+        _packOnly.SetSilently(secili != null && (s.SadeceHazirPaket?.Any(g => g.Equals(secili.Oyun, StringComparison.OrdinalIgnoreCase)) ?? false));
         var open = new HashSet<string>(s.AcikPaketler ?? (IEnumerable<string>)SozlukKutuphanesi.VarsayilanAcik, StringComparer.OrdinalIgnoreCase);
         var packs = SozlukKutuphanesi.Paketler();
         if (_openPack != null)
@@ -466,6 +490,35 @@ internal sealed partial class MainWindow
     }
 
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private void SetPackOnly(bool on)
+    {
+        var game = HazirKutuphane.Guncel.Sec(_host.Current.SeciliHazirOyun)?.Oyun;
+        if (string.IsNullOrEmpty(game))
+        {
+            _packOnly.SetSilently(false);
+            return;
+        }
+        Patch(s =>
+        {
+            s.SeciliHazirOyun = game;
+            s.SadeceHazirPaket ??= new List<string>();
+            s.SadeceHazirPaket.RemoveAll(x => x.Equals(game, StringComparison.OrdinalIgnoreCase));
+            if (on) s.SadeceHazirPaket.Add(game);
+        });
+    }
+
+    private void OpenLinesFolder()
+    {
+        try
+        {
+            HazirKutuphane.Yukle();
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + HazirKutuphane.Klasor() + "\"") { UseShellExecute = true });
+            FillGlossary();
+            _scroll.Relayout();
+        }
+        catch (Exception ex) { ErrorLog.Write(ex, "lines-folder"); Notice(HazirKutuphane.Klasor()); }
+    }
 
     private void TogglePack(string id, bool on)
     {
