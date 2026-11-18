@@ -152,7 +152,7 @@ public sealed class PreviewSurface : Canvas
         if (handles) DrawHandles(dc, box, color);
         var type = new Typeface(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
         var text = new FormattedText(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, type, 12, new SolidColorBrush(color), 1.0);
-        dc.DrawText(text, new Point(view.X + 10, view.Y + 4));
+        dc.DrawText(text, new Point(view.X + 8, view.Y - 16));
     }
 
     private void DrawHandles(DrawingContext dc, EkranDikdortgen box, Color color)

@@ -92,8 +92,8 @@ public sealed class ShellWindow : Window
     public void CaptureShots(string dir)
     {
         Directory.CreateDirectory(dir);
-        Height = 1180;
-        _pageScroll.MaxHeight = 520;
+        Height = 860;
+        _pageScroll.MaxHeight = 260;
         ShowPage(0);
         UpdateLayout();
         Save(this, Path.Combine(dir, "01-onizleme.png"));
@@ -121,7 +121,7 @@ public sealed class ShellWindow : Window
     {
         var grid = new Grid();
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(48) });
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 380 });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star), MinHeight = 240 });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -311,7 +311,7 @@ public sealed class ShellWindow : Window
         var search = new TextBox { Width = 280, Height = 32, Margin = new Thickness(0, 4, 0, 8), Background = BrushOf("#1C212B"), Foreground = BrushOf("#F2F4F8"), BorderBrush = BrushOf("#313844") };
         var list = new ListBox
         {
-            Height = 120,
+            Height = 88,
             Background = BrushOf("#1C212B"),
             Foreground = BrushOf("#F2F4F8"),
             BorderThickness = new Thickness(0),
@@ -355,16 +355,18 @@ public sealed class ShellWindow : Window
     {
         var stack = new StackPanel();
         stack.Children.Add(Block("F8 ana pencere · F9 duraklat · F10 çıkış. Pencereyi kapatmak tepsiye küçültür."));
-        stack.Children.Add(Chip(_host.Current.AcilistaGuncellemeDenetle ? "Açılışta güncelleme  · açık" : "Açılışta güncelleme  · kapalı",
+        var row = new WrapPanel();
+        row.Children.Add(Chip(_host.Current.AcilistaGuncellemeDenetle ? "Açılışta güncelleme  · açık" : "Açılışta güncelleme  · kapalı",
             () => { Patch(s => s.AcilistaGuncellemeDenetle = !s.AcilistaGuncellemeDenetle); ShowPage(3); }, _host.Current.AcilistaGuncellemeDenetle));
-        if (!string.IsNullOrEmpty(_host.UpdateBanner)) stack.Children.Add(Block(_host.UpdateBanner));
-        stack.Children.Add(Chip("Güncellemeleri denetle", () => _host.CheckUpdates()));
-        stack.Children.Add(Chip("Güncelle", () => _host.BeginUpdateInstall()));
-        stack.Children.Add(Chip("Bu sürümü atla", () => _host.SkipUpdateOffer()));
-        stack.Children.Add(Chip(_host.Current.OzelIsimleriKoru ? "Büyük harfli isimleri koru  · açık" : "Büyük harfli isimleri koru  · kapalı",
+        row.Children.Add(Chip("Güncellemeleri denetle", () => _host.CheckUpdates()));
+        row.Children.Add(Chip("Güncelle", () => _host.BeginUpdateInstall()));
+        row.Children.Add(Chip("Bu sürümü atla", () => _host.SkipUpdateOffer()));
+        row.Children.Add(Chip(_host.Current.OzelIsimleriKoru ? "Büyük harfli isimleri koru  · açık" : "Büyük harfli isimleri koru  · kapalı",
             () => { Patch(s => s.OzelIsimleriKoru = !s.OzelIsimleriKoru); ShowPage(3); }, _host.Current.OzelIsimleriKoru));
+        row.Children.Add(Chip("Yazı tanıma paketini kur", () => _host.InstallOcrPack()));
+        stack.Children.Add(row);
+        if (!string.IsNullOrEmpty(_host.UpdateBanner)) stack.Children.Add(Block(_host.UpdateBanner));
         stack.Children.Add(Block(_host.OcrPaketiEksik ? OcrDilPaketi.Banner(_host.Current.KaynakDil) : "Yazı tanıma paketi hazır."));
-        stack.Children.Add(Chip("Yazı tanıma paketini kur", () => _host.InstallOcrPack()));
         return stack;
     }
 
