@@ -17,7 +17,8 @@ public enum AltyaziOnAyar { Serbest, AltOrta, UstOrta, BolgeninAlti, BolgeninUst
 public static class SubtitleLayout
 {
     public const int SnapPx = 16;
-    public const int MinWidth = 200;
+    /// <summary>Smallest saved subtitle box. 1.4 forced 200px, so a short drag could not stick.</summary>
+    public const int MinWidth = BoxEdit.MinSize;
 
     public static int MaxWidth(int regionWidth, int screenWidth) =>
         Math.Clamp(Math.Max(regionWidth, 500), MinWidth, Math.Max(MinWidth, screenWidth));

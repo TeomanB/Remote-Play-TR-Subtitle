@@ -1,8 +1,6 @@
-using AltyaziCevirici.Core;
+namespace AltyaziCevirici.Core;
 
-namespace AltyaziCevirici;
-
-internal interface IAppHost
+public interface IAppHost
 {
     AppSettings Current { get; }
     bool IsRunning { get; }
@@ -25,4 +23,9 @@ internal interface IAppHost
     void NotifyMinimizedToTray();
     void SkipRelease(string tag);
     void Quit();
+    string UpdateBanner { get; }
+    void CheckUpdates();
+    void BeginUpdateInstall();
+    void SkipUpdateOffer();
+    void InstallOcrPack();
 }

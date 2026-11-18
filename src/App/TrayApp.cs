@@ -1,4 +1,5 @@
 using AltyaziCevirici.Core;
+using AltyaziCevirici.Ui;
 
 namespace AltyaziCevirici;
 
@@ -14,7 +15,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private readonly OverlayForm _overlay;
     private readonly GoogleTranslator _translator = new();
     private readonly TranslationProcessor _processor;
-    private MainWindow? _center;
+    private ShellWindow? _shell;
     private readonly ToolStripMenuItem _runItem;
     private readonly System.Windows.Forms.Timer _previewTimer = new() { Interval = 3500 };
     public event EventHandler? StateChanged;
@@ -31,7 +32,6 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private Task? _loopTask;
     private volatile bool _paused;
     private volatile bool _resetRequested;
-    private bool _selecting;
     private int _lastLatencyMs;
     private string _lastText = "";
 
@@ -55,7 +55,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         var menu = new ContextMenuStrip();
         menu.Items.Add(showItem);
         menu.Items.Add(_runItem);
-        menu.Items.Add(new ToolStripMenuItem("Bölge Seç (F8)", null, (_, _) => SafeRun(SelectRegion, "select")));
+        menu.Items.Add(new ToolStripMenuItem("Ana pencere (F8)", null, (_, _) => SafeRun(ShowMain, "show")));
         menu.Items.Add(_pauseItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Çıkış (F10)", null, (_, _) => SafeRun(Quit, "quit")));
@@ -66,7 +66,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
         _hotkeys = new HotkeyWindow();
         var failed = new List<string>();
-        if (!_hotkeys.Register(Keys.F8, () => SafeRun(SelectRegion, "select"))) failed.Add("F8");
+        if (!_hotkeys.Register(Keys.F8, () => SafeRun(ShowMain, "show"))) failed.Add("F8");
         if (!_hotkeys.Register(Keys.F9, () => SafeRun(TogglePause, "pause"))) failed.Add("F9");
         if (!_hotkeys.Register(Keys.F10, () => SafeRun(Quit, "quit"))) failed.Add("F10");
         if (failed.Count > 0)
@@ -80,9 +80,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     private void Start()
     {
-        _center = new MainWindow(this);
-        _center.Show();
+        ShowMain();
         YenidenYukleOcr();
+        if (_settings.AcilistaGuncellemeDenetle) _ = CheckUpdatesAsync(false);
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -197,7 +197,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             if (state is not DisplayUpdate u || u.Seq <= _lastAppliedSeq) return; // never apply stale updates
             _lastAppliedSeq = u.Seq;
             if (_previewing) { _previewing = false; _previewTimer.Stop(); }
-            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); return; }
+            if (u.Kind == DisplayKind.Hide || _paused) { _overlay.HideText(); return; }
             _lastText = u.Shown ?? string.Empty;
             _overlay.ShowText(_lastText, u.IsFallback);
         }
@@ -235,41 +235,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     private void SelectRegion()
     {
-        if (_selecting) return;
-        _selecting = true;
-        bool wasRunning = _loopTask != null;
-        StopLoop();
-        _overlay.HideText();
-        try
-        {
-            using var f = new RegionSelectorForm();
-            bool wasVisible = _center is { Visible: true };
-            _center?.Hide();
-            try
-            {
-            if (f.ShowDialog() == DialogResult.OK)
-            {
-                var r = f.SelectedRegion;
-                _settings.RegionX = r.X;
-                _settings.RegionY = r.Y;
-                _settings.RegionWidth = r.Width;
-                _settings.RegionHeight = r.Height;
-                SaveSettings();
-                StateChanged?.Invoke(this, EventArgs.Empty);
-                Balloon("Bölge kaydedildi. Çeviri için Başlat'a bas.", ToolTipIcon.Info);
-                if (wasRunning) StartLoop();
-            }
-            else if (wasRunning)
-            {
-                StartLoop();
-            }
-            }
-            finally
-            {
-                if (wasVisible) ShowMain();
-            }
-        }
-        finally { _selecting = false; }
+        ShowMain();
+        Balloon("Kutuları önizlemede sürükle. Beyaz kareler tutamaçtır.", ToolTipIcon.Info);
     }
 
     private void TogglePause()
@@ -296,10 +263,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     public void ShowMain()
     {
-        if (_center == null || _center.IsDisposed) _center = new MainWindow(this);
-        if (!_center.Visible) _center.Show();
-        if (_center.WindowState == FormWindowState.Minimized) _center.WindowState = FormWindowState.Normal;
-        _center.Activate();
+        if (_shell == null) _shell = new ShellWindow(this);
+        _shell.ShowFromHost();
     }
 
     public void NotifyMinimizedToTray()
@@ -326,7 +291,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     {
         if (!_settings.HasRegion)
         {
-            Balloon("Önce Bölge Seç ile altyazı şeridini işaretle.", ToolTipIcon.Info);
+            Balloon("Önce sarı kutuyu altyazının üstüne çek.", ToolTipIcon.Info);
             StateChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -362,24 +327,17 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         if (old != null && !ReferenceEquals(old, next)) old.Dispose();
     }
 
-    public void BeginPlacementEdit()
-    {
-        bool wasRunning = IsRunning;
-        if (wasRunning) StopLoop();
-        _overlay.HideText();
-        var copy = _settings.Clone();
-        using var editor = new PlacementEditorForm(copy, Region, "Örnek çeviri: Siktir, Port Gellhorn'a geç kaldık!");
-        if (editor.ShowDialog(_center) == DialogResult.OK)
-            Apply(copy, persist: true);
-        if (wasRunning) StartLoop();
-        else ShowPreview();
-    }
+    public void BeginPlacementEdit() => ShowMain();
 
     public void Apply(AppSettings e, bool persist)
     {
         var oldOptions = System.Text.Json.JsonSerializer.Serialize(_settings.ToProcessorOptions());
         string oldSource = _settings.KaynakDil;
 
+        _settings.RegionX = e.RegionX;
+        _settings.RegionY = e.RegionY;
+        _settings.RegionWidth = e.RegionWidth;
+        _settings.RegionHeight = e.RegionHeight;
         _settings.KaynakDil = e.KaynakDil;
         _settings.HedefDil = e.HedefDil;
         _settings.OzelIsimleriKoru = e.OzelIsimleriKoru;
@@ -403,7 +361,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.MonitorAdi = e.MonitorAdi;
         _settings.AcilistaGuncellemeDenetle = e.AcilistaGuncellemeDenetle;
         if (!string.IsNullOrEmpty(e.AtlananSurum)) _settings.AtlananSurum = e.AtlananSurum;
-        _settings.Sozluk = e.Sozluk?.Select(g => new SozlukGirdisi(g.Ingilizce, g.Turkce)).ToList() ?? new List<SozlukGirdisi>();
+        _settings.Sozluk = e.Sozluk?.Select(g => new SozlukGirdisi(g.Ingilizce, g.Turkce) { CaseSensitive = g.CaseSensitive }).ToList() ?? new List<SozlukGirdisi>();
         _settings.Clamp();
 
         // Appearance: redraw the visible line right away.
@@ -452,10 +410,10 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     public void ShowPreview()
     {
-        if (!_settings.HasRegion) { Balloon("Önce altyazı bölgesini seç (F8).", ToolTipIcon.Info); return; }
+        if (!_settings.HasRegion) { Balloon("Önce sarı kutuyu altyazının üstüne çek.", ToolTipIcon.Info); return; }
         _previewing = true;
         _overlay.Configure(Region, _settings);
-        _overlay.ShowText(MainWindow.OrnekAltyazi, false);
+        _overlay.ShowText(OnizlemeMetni.Ornek, false);
         _previewTimer.Stop();
         _previewTimer.Start();
     }
@@ -465,6 +423,85 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     public int SonGecikmeMs => _lastLatencyMs;
     public string OcrDurum => _ocr == null ? "OCR yok" : !IsRunning ? "Durdu" : _paused ? "Duraklatıldı" : "Çalışıyor";
     public bool KurulumKopyasi => GuncellemeIstegi.KurulumKopyasi;
+    public string UpdateBanner { get; private set; } = "";
+    private GuncellemeBilgisi? _offer;
+    private bool _checking;
+
+    public void CheckUpdates() => _ = CheckUpdatesAsync(true);
+
+    public void SkipUpdateOffer()
+    {
+        if (_offer == null) return;
+        SkipRelease(_offer.Tag);
+        UpdateBanner = "";
+        _offer = null;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void BeginUpdateInstall() => _ = InstallUpdateAsync();
+
+    public void InstallOcrPack() => _ = InstallOcrAsync();
+
+    private async Task CheckUpdatesAsync(bool interactive)
+    {
+        if (_checking) return;
+        _checking = true;
+        try
+        {
+            var info = await GuncellemeIstegi.SorgulaAsync().ConfigureAwait(true);
+            if (_quitting) return;
+            if (info == null)
+            {
+                if (interactive) Balloon("Güncelleme denetlenemedi.", ToolTipIcon.Warning);
+                return;
+            }
+            if (!SurumKarsilastirma.IsNewer(info.Tag, GuncellemeIstegi.UygulamaSurumu))
+            {
+                UpdateBanner = "Bu sürüm güncel.";
+                if (interactive) Balloon("Bu sürüm güncel.", ToolTipIcon.Info);
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+            if (!interactive && !GuncellemeOkuyucu.BannerGoster(GuncellemeIstegi.UygulamaSurumu, info, _settings.AtlananSurum))
+                return;
+            _offer = info;
+            UpdateBanner = "Yeni sürüm var: " + info.Tag;
+            Balloon(UpdateBanner, ToolTipIcon.Info);
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally { _checking = false; }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        var info = _offer;
+        if (info == null)
+        {
+            Balloon("Önce güncellemeyi denetle.", ToolTipIcon.Info);
+            return;
+        }
+        if (!KurulumKopyasi || !GuncellemeOkuyucu.GuvenliKurulumAdresi(info.KurulumUrl))
+        {
+            GuncellemeIstegi.SayfayiAc(info.Sayfa);
+            return;
+        }
+        var path = await GuncellemeIstegi.IndirAsync(info, null, CancellationToken.None).ConfigureAwait(true);
+        if (path == null)
+        {
+            GuncellemeIstegi.SayfayiAc(info.Sayfa);
+            return;
+        }
+        try { GuncellemeIstegi.KurulumuBaslat(path); }
+        catch (Exception ex) { ErrorLog.Write(ex, "update"); GuncellemeIstegi.SayfayiAc(info.Sayfa); return; }
+        Quit();
+    }
+
+    private async Task InstallOcrAsync()
+    {
+        var (ok, mesaj) = await OcrPaketKur.KurAsync(_settings.KaynakDil).ConfigureAwait(true);
+        Balloon(ok ? (YenidenYukleOcr() ? "Yazı tanıma paketi hazır." : "Paket kuruldu. Tanıma açılmazsa uygulamayı yeniden aç.") : mesaj, ok ? ToolTipIcon.Info : ToolTipIcon.Warning);
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     void IAppHost.SelectRegion() => SafeRun(SelectRegion, "select");
     void IAppHost.TogglePause() => SafeRun(TogglePause, "pause");
@@ -482,7 +519,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _quitting = true;
         try { _warmTimer.Dispose(); } catch (Exception) { }
         try { _previewTimer.Dispose(); } catch (Exception) { }
-        try { if (_center is { IsDisposed: false }) { _center.AllowExit(); _center.Close(); } } catch (Exception) { }
+        try { if (_shell != null) { _shell.AllowClose(); _shell.Close(); } } catch (Exception) { }
         StopLoop();
         _pipeline?.Dispose();
         _hotkeys?.Dispose();
