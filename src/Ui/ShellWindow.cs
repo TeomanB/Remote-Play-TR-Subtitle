@@ -19,6 +19,7 @@ public sealed class ShellWindow : Window
     };
     private readonly Border _start = new();
     private readonly StackPanel _pageHost = new() { Margin = new Thickness(16, 8, 16, 12) };
+    private readonly ScrollViewer _pageScroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 220 };
     private readonly List<Border> _tabs = new();
     private readonly Dictionary<string, TextBox> _nums = new();
     private bool _loading = true;
@@ -91,6 +92,8 @@ public sealed class ShellWindow : Window
     public void CaptureShots(string dir)
     {
         Directory.CreateDirectory(dir);
+        Height = 1180;
+        _pageScroll.MaxHeight = 520;
         ShowPage(0);
         UpdateLayout();
         Save(this, Path.Combine(dir, "01-onizleme.png"));
@@ -136,7 +139,8 @@ public sealed class ShellWindow : Window
         var tabs = TabBar();
         DockPanel.SetDock(tabs, Dock.Top);
         lower.Children.Add(tabs);
-        lower.Children.Add(_pageHost);
+        _pageScroll.Content = _pageHost;
+        lower.Children.Add(_pageScroll);
         Grid.SetRow(lower, 4);
         grid.Children.Add(lower);
         ShowPage(0);
@@ -612,7 +616,7 @@ public sealed class DemoHost : IAppHost
     private AppSettings _settings = new()
     {
         RegionX = 360, RegionY = 900, RegionWidth = 1200, RegionHeight = 90,
-        KonumAyarlandi = true, KutuX = 460, KutuY = 790, KutuGenislik = 1000, KutuYukseklik = 84,
+        KonumAyarlandi = true, KutuX = 420, KutuY = 640, KutuGenislik = 1080, KutuYukseklik = 120,
         YaziBoyutu = 28, ArkaPlanOpakligi = 70, DisCizgi = 4, YaziRengi = "#FFFFFF",
         OzelIsimleriKoru = true, AcilistaGuncellemeDenetle = true,
     };

@@ -118,15 +118,22 @@ public sealed class PreviewSurface : Canvas
     {
         double size = Math.Clamp(_look.YaziBoyutu * (box.Width / 640.0), 12, 36);
         var type = new Typeface(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
-        var text = new FormattedText(Sample, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, type, size, Brushes.White, 1.0);
         byte alpha = (byte)Math.Clamp(_look.ArkaPlanOpakligi * 2.55, 0, 255);
         if (alpha > 0)
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(alpha, 8, 10, 14)), null, box, 8, 8);
+        dc.PushClip(new RectangleGeometry(box));
         var color = ColorOf(_look.YaziRengi);
-        text.SetForegroundBrush(new SolidColorBrush(color));
-        text.MaxTextWidth = Math.Max(20, box.Width - 16);
-        text.TextAlignment = TextAlignment.Center;
-        dc.DrawText(text, new Point(box.X + 8, box.Y + 8));
+        while (size > 11)
+        {
+            var trial = new FormattedText(Sample, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, type, size, new SolidColorBrush(color), 1.0)
+            {
+                MaxTextWidth = Math.Max(20, box.Width - 16),
+                TextAlignment = TextAlignment.Center,
+            };
+            if (trial.Height <= box.Height - 28) { dc.DrawText(trial, new Point(box.X + 8, box.Y + 22)); break; }
+            size -= 2;
+        }
+        dc.Pop();
     }
 
     private static Color ColorOf(string hex)
@@ -145,7 +152,7 @@ public sealed class PreviewSurface : Canvas
         if (handles) DrawHandles(dc, box, color);
         var type = new Typeface(new FontFamily("Segoe UI Variable Text, Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
         var text = new FormattedText(label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, type, 12, new SolidColorBrush(color), 1.0);
-        dc.DrawText(text, new Point(view.X + 8, Math.Max(2, view.Y - 18)));
+        dc.DrawText(text, new Point(view.X + 10, view.Y + 4));
     }
 
     private void DrawHandles(DrawingContext dc, EkranDikdortgen box, Color color)
