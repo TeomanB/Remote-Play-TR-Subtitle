@@ -106,7 +106,7 @@ internal sealed class OcrCapture : IDisposable
     /// Copies the union of the areas once, then OCRs each. An area whose pixels did not change
     /// returns its previous text and does not call the engine.
     /// </summary>
-    public async Task<string[]> ReadFrameAsync(IReadOnlyList<(string Slot, Rectangle Region)> areas, bool whiteFilter, int threshold)
+    public async Task<string[]> ReadFrameAsync(IReadOnlyList<(string Slot, Rectangle Region)> areas, bool whiteFilter, int threshold, IReadOnlyList<EkranDikdortgen>? maskeler = null)
     {
         var texts = new string[areas.Count];
         if (InFlight)
@@ -130,6 +130,7 @@ internal sealed class OcrCapture : IDisposable
         {
             EnsureRaw(frame.Size);
             _rawG!.CopyFromScreen(frame.Left, frame.Top, 0, 0, frame.Size, CopyPixelOperation.SourceCopy);
+            Mask(frame, maskeler);
             Collect(areas, live, frame, whiteFilter, threshold, texts, ready);
 
             foreach (var (index, crop) in ready)
@@ -150,6 +151,24 @@ internal sealed class OcrCapture : IDisposable
             _rawG = null;
         }
         return texts;
+    }
+
+    private void Mask(Rectangle frame, IReadOnlyList<EkranDikdortgen>? maskeler)
+    {
+        if (maskeler == null || maskeler.Count == 0 || _raw == null) return;
+        var data = _raw.LockBits(new Rectangle(Point.Empty, frame.Size), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+        try
+        {
+            var span = Writable(data);
+            foreach (var box in maskeler)
+            {
+                var local = KatmanMaske.Yerel(box, frame.X, frame.Y, frame.Width, frame.Height);
+                if (local.Width <= 0 || local.Height <= 0) continue;
+                ImageOps.FillBlack(span, data.Stride, local.X, local.Y, local.Width, local.Height, frame.Width, frame.Height);
+                TanilamaLog.Yaz("maske", local.X + "," + local.Y + " " + local.Width + "x" + local.Height);
+            }
+        }
+        finally { _raw.UnlockBits(data); }
     }
 
     private Slot SlotFor(string slot)
@@ -254,6 +273,7 @@ internal sealed class OcrCapture : IDisposable
     }
 
     private static unsafe ReadOnlySpan<byte> Span(BitmapData d) => new((void*)d.Scan0, d.Stride * d.Height);
+    private static unsafe Span<byte> Writable(BitmapData d) => new((void*)d.Scan0, d.Stride * d.Height);
 
     private void EnsureRaw(Size size)
     {

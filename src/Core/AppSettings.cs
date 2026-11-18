@@ -16,6 +16,9 @@ public sealed class AppSettings
     public const int CurrentVersion = 5;
     public int Fps { get; set; } = 15;
     public bool BeyazYaziFiltresi { get; set; } = true;
+
+    /// <summary>When true, subtitle overlays are visible to Discord and OBS. OCR still masks those rectangles.</summary>
+    public bool PaylasimdaGoster { get; set; } = true;
     public int BeyazEsik { get; set; } = 170;
     public OverlayPlacement OverlayKonumu { get; set; } = OverlayPlacement.Ust;
     public float YaziBoyutu { get; set; } = 26f;

@@ -10,6 +10,7 @@ internal static class Native
     public const int WS_EX_TOPMOST = 0x00000008;
     public const int WS_EX_NOACTIVATE = 0x08000000;
 
+    public const uint WDA_NONE = 0;
     public const uint WDA_EXCLUDEFROMCAPTURE = 0x00000011;
 
     public const int WM_HOTKEY = 0x0312;
