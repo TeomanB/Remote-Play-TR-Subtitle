@@ -59,6 +59,27 @@ jobs:
       - name: Publish self-contained win-x64
         run: dotnet publish src/App/AltyaziCevirici.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish --nologo
 
+      - name: UI screenshots
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts\ui | Out-Null
+          $p = Start-Process -FilePath (Resolve-Path "publish\AltyaziCevirici.exe") -WorkingDirectory (Get-Location) -ArgumentList "--screenshots","artifacts\ui" -PassThru
+          if (-not $p.WaitForExit(120000)) { try { $p.Kill() } catch {} ; throw "Screenshot process timed out" }
+          if (Test-Path "artifacts\ui\error.txt") { Get-Content "artifacts\ui\error.txt"; throw "Screenshot process wrote error.txt" }
+          if ($p.ExitCode -ne 0) { throw "Screenshot process exited $($p.ExitCode)" }
+          foreach ($name in @("01-ana.png","02-tur-menu.png","03-tur-orijinal.png","04-tur-alanlar.png","05-tur-gorunum.png")) {
+            $file = Join-Path "artifacts\ui" $name
+            if (-not (Test-Path $file)) { throw "Missing $file" }
+            if ((Get-Item $file).Length -lt 8KB) { throw "$file is too small" }
+          }
+
+      - name: Upload UI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots-${{ steps.ver.outputs.version }}
+          path: artifacts/ui/*.png
+          if-no-files-found: error
+
       - name: Check publish output
         shell: pwsh
         run: |
@@ -176,7 +197,7 @@ jobs:
           zip="artifacts/AltyaziCevirici-Portable-${VERSION}.zip"
           notes="$(mktemp)"
           cat > "$notes" << EOF
-          Çevirmen Samet ${VERSION}
+          Tercüman ${VERSION}
 
           - AltyaziCevirici-Setup-${VERSION}.exe — kullanıcı başına kurulum (yönetici gerekmez), Başlat menüsü, isteğe bağlı masaüstü kısayolu, kaldırıcı. Kurulum dili Türkçedir.
           - AltyaziCevirici-Portable-${VERSION}.zip — AltyaziCevirici.exe ve KULLANIM.txt.

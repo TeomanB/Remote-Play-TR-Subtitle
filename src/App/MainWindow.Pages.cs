@@ -52,6 +52,7 @@ internal sealed partial class MainWindow
     private readonly UiToggle _startupToggle = new();
     private readonly UiToggle _autoUpdateToggle = new();
     private readonly UiButton _settingsBtn = new() { Text = "Göster" };
+    private readonly UiButton _tourBtn = new() { Text = "Göster" };
 
     /// <summary>Opens Explorer with ayarlar.json selected (writes the file first if it does not exist yet).</summary>
     private void RevealSettings()
@@ -528,7 +529,7 @@ internal sealed partial class MainWindow
         _scroll.Relayout();
     }
 
-    private void Notice(string text) => MessageBox.Show(this, text, "Çevirmen Samet", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    private void Notice(string text) => MessageBox.Show(this, text, AppInfo.DisplayName, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
     // ---------------- Gelişmiş ----------------
 
@@ -562,6 +563,7 @@ internal sealed partial class MainWindow
             Patch(x => x.WindowsIleBaslat = _startupToggle.Checked);
         };
         _settingsBtn.Click += (_, _) => RevealSettings();
+        _tourBtn.Click += (_, _) => StartTour();
         _autoUpdateToggle.SetSilently(s.AcilistaGuncellemeDenetle);
         _autoUpdateToggle.CheckedChanged += (_, _) => Patch(x => x.AcilistaGuncellemeDenetle = _autoUpdateToggle.Checked);
 
@@ -616,9 +618,11 @@ internal sealed partial class MainWindow
             y = Row(p, y, w, Ic.Select, "Ayar dosyası", "Tüm ayarlar ayarlar.json dosyasına kaydedilir; program açılırken buradan okur.", _settingsBtn, Theme.D(72), null);
             p.AddDivider(y, w);
             y = Row(p, y, w, Ic.Keyboard, "Kısayollar", "F8 alanı ekranda işaretle · F9 duraklat · F10 çıkış. Pencereyi kapatmak tepsiye küçültür.", null, 0, null);
+            p.AddDivider(y, w);
+            y = Row(p, y, w, Ic.Info, "Tanıtımı tekrar göster", "Pencereyi adım adım anlatır. İlk açılışta bir kez kendiliğinden çıkar.", _tourBtn, Theme.D(84), null);
             return y;
         });
-        foreach (var c in new Control[] { _updateBtn, _skipBtn, _ocrBtn, _langDrop, _whiteToggle, _startupToggle, _autoUpdateToggle, _settingsBtn })
+        foreach (var c in new Control[] { _updateBtn, _skipBtn, _ocrBtn, _langDrop, _whiteToggle, _startupToggle, _autoUpdateToggle, _settingsBtn, _tourBtn })
             _advancedPage.Controls.Add(c);
     }
 
@@ -717,7 +721,7 @@ internal sealed partial class MainWindow
             if (IsDisposed) return;
             if (!ok) { Notice(mesaj); return; }
             if (!_host.YenidenYukleOcr())
-                Notice("Paket kuruldu. Tanıma açılmazsa Çevirmen Samet'i kapatıp yeniden aç.");
+                Notice("Paket kuruldu. Tanıma açılmazsa " + AppInfo.DisplayName + "'ı kapatıp yeniden aç.");
         }
         finally
         {

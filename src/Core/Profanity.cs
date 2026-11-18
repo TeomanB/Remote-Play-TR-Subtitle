@@ -185,7 +185,7 @@ public static class Profanity
 
     private static readonly Regex SentenceEnd = new(@"[.!?…]+(?=\s+\S)", RegexOptions.CultureInvariant);
 
-    private static int SentenceIndex(string s, int pos) => SentenceEnd.Matches(s[..Math.Min(pos, s.Length)]).Count;
+    private static int SentenceIndex(string s, int pos) => SentenceEnd.Count(s[..Math.Min(pos, s.Length)]);
 
     private static string Tidy(string s)
     {
@@ -257,5 +257,5 @@ public static class Profanity
     }
 
     /// <summary>Number of sentences in an English text (for mapping particles).</summary>
-    public static int CountSentences(string s) => string.IsNullOrWhiteSpace(s) ? 0 : SentenceEnd.Matches(s).Count + 1;
+    public static int CountSentences(string s) => string.IsNullOrWhiteSpace(s) ? 0 : SentenceEnd.Count(s) + 1;
 }

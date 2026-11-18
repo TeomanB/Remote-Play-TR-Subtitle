@@ -4,7 +4,7 @@ namespace AltyaziCevirici;
 
 internal sealed class TrayApp : ApplicationContext, IAppHost
 {
-    private const string AppName = "Çevirmen Samet";
+    private const string AppName = AppInfo.DisplayName;
 
     private readonly string _settingsPath;
     private readonly AppSettings _settings;
@@ -404,6 +404,7 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.PencereBuyuk = e.PencereBuyuk;
         _settings.SonSayfa = e.SonSayfa;
         _settings.WindowsIleBaslat = e.WindowsIleBaslat;
+        _settings.TanitimGoruldu = e.TanitimGoruldu;
         _settings.KonumAyarlandi = e.KonumAyarlandi;
         _settings.BolgeyiTakipEt = e.BolgeyiTakipEt;
         _settings.OnAyar = e.OnAyar;

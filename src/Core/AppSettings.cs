@@ -82,6 +82,8 @@ public sealed class AppSettings
     public int SonSayfa { get; set; }
     /// <summary>Start with Windows (mirrored to the HKCU Run key).</summary>
     public bool WindowsIleBaslat { get; set; }
+    /// <summary>The first-run coach tour has been finished or skipped.</summary>
+    public bool TanitimGoruldu { get; set; }
 
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;

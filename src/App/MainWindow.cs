@@ -20,6 +20,9 @@ internal sealed partial class MainWindow : Form
     private readonly TitleButton _min = new() { Glyph = Ic.Min };
     private readonly TitleButton _max = new() { Glyph = Ic.Max };
     private readonly TitleButton _close = new() { Glyph = Ic.ChromeClose, IsClose = true };
+    private readonly TitleButton _help = new() { Glyph = Ic.Info };
+    private readonly CoachTour _tour = new();
+    private int _pageBeforeTour;
 
     private readonly NavItem[] _nav =
     {
@@ -62,7 +65,7 @@ internal sealed partial class MainWindow : Form
         AutoScaleMode = AutoScaleMode.None;
         FormBorderStyle = FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.CenterScreen;
-        Text = "Çevirmen Samet";
+        Text = AppInfo.DisplayName;
         BackColor = Theme.Bg;
         ForeColor = Theme.Tx;
         Font = Theme.Body;
@@ -77,6 +80,13 @@ internal sealed partial class MainWindow : Form
         BuildSidebar();
         BuildCenter();
         BuildInspector();
+        _tour.Preparing += (_, index) =>
+        {
+            if ((uint)index < (uint)_cues.Length) ShowNav(_cues[index].Page);
+            Arrange();
+        };
+        _tour.Closed += (_, _) => EndTour();
+        Controls.Add(_tour);
 
         _tick.Tick += (_, _) => { Grab(); RefreshStatus(); };
         _host.StateChanged += OnState;
@@ -92,6 +102,18 @@ internal sealed partial class MainWindow : Form
             Grab();
             RefreshAll();
             if (_host.Current.AcilistaGuncellemeDenetle) _ = CheckUpdatesAsync(false);
+            var shots = Environment.GetEnvironmentVariable("CEVIRMEN_SHOTS");
+            if (!string.IsNullOrEmpty(shots))
+            {
+                try { CaptureShots(shots); Environment.Exit(0); }
+                catch (Exception ex)
+                {
+                    try { File.WriteAllText(Path.Combine(shots, "error.txt"), ex.ToString()); } catch (Exception) { }
+                    Environment.Exit(1);
+                }
+                return;
+            }
+            if (!_host.Current.TanitimGoruldu) StartTour();
         };
     }
 
@@ -101,7 +123,8 @@ internal sealed partial class MainWindow : Form
 
     private void BuildChrome()
     {
-        foreach (var b in new[] { _min, _max, _close }) Controls.Add(b);
+        foreach (var b in new[] { _help, _min, _max, _close }) Controls.Add(b);
+        _help.Click += (_, _) => StartTour();
         _min.Click += (_, _) => WindowState = FormWindowState.Minimized;
         _max.Click += (_, _) => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
         _close.Click += (_, _) => Close();
@@ -272,7 +295,10 @@ internal sealed partial class MainWindow : Form
         _close.SetBounds(W - cap, 0, cap, top);
         _max.SetBounds(W - 2 * cap, 0, cap, top);
         _min.SetBounds(W - 3 * cap, 0, cap, top);
-        _titleRect = new Rectangle(0, 0, W - 3 * cap, top);
+        _help.SetBounds(W - 4 * cap, 0, cap, top);
+        _titleRect = new Rectangle(0, 0, W - 4 * cap, top);
+        _tour.Bounds = ClientRectangle;
+        if (_tour.Running) _tour.BringToFront();
 
         // Sidebar
         int nx = Theme.D(12), nw = Theme.D(188) - Theme.D(22);
@@ -354,7 +380,7 @@ internal sealed partial class MainWindow : Form
         int bx = Theme.D(18), by = top + Theme.D(8);
         Mascot.Draw(g, new RectangleF(bx, by, Theme.D(38), Theme.D(38)));
         int tx = bx + Theme.D(48);
-        Theme.Text(g, "Çevirmen Samet", Theme.Brand, new Rectangle(tx, by + Theme.D(2), Theme.D(188) - tx, Theme.D(20)), Theme.Tx);
+        Theme.Text(g, AppInfo.DisplayName, Theme.Brand, new Rectangle(tx, by + Theme.D(2), Theme.D(188) - tx, Theme.D(20)), Theme.Tx);
         Theme.Text(g, OcrDilPaketi.DilAdi(_host.Current.KaynakDil) + " → Türkçe", Theme.Small, new Rectangle(tx, by + Theme.D(21), Theme.D(188) - tx, Theme.D(16)), Theme.Tx2);
         // Center header
         var h = _headerRect;
@@ -864,6 +890,82 @@ internal sealed partial class MainWindow : Form
         _statusCard.Invalidate();
         _lastCard.Invalidate();
         _sourceCard.Invalidate();
+    }
+
+    private TourCue[] _cues = Array.Empty<TourCue>();
+
+    private void StartTour()
+    {
+        _pageBeforeTour = _navIndex;
+        _cues = BuildCues();
+        _tour.Play(_cues);
+    }
+
+    private void EndTour()
+    {
+        if (!_host.Current.TanitimGoruldu) Patch(s => s.TanitimGoruldu = true);
+        ShowNav(_pageBeforeTour);
+    }
+
+    private TourCue[] BuildCues()
+    {
+        ShowNav(0);
+        Arrange();
+        Rectangle UnionNav()
+        {
+            var r = _nav[0].Bounds;
+            foreach (var n in _nav) r = Rectangle.Union(r, n.Bounds);
+            return r;
+        }
+        Rectangle OnForm(Control c, Rectangle inner)
+        {
+            var p = PointToClient(c.PointToScreen(inner.Location));
+            return new Rectangle(p, inner.Size);
+        }
+        var list = new List<TourCue>
+        {
+            new(UnionNav(), "Sol menü", "Önizleme, Görünüm, Sözlük ve Gelişmiş burada. Her biri sağdaki paneli değiştirir.", 0),
+            new(_previewCard.Bounds, "Canlı önizleme", "Seçtiğin ekran burada görünür. Altyazı kutularını bu görüntünün üstüne koyarsın.", 0),
+            new(OnForm(_stage, _stage.BoxClient(PreviewStage.Orig)), "Orijinal altyazı", "Bu kutu oyunun İngilizce altyazısının okunduğu alandır. Sürükleyerek taşı, tutamaçlardan boyutlandır.", 0),
+            new(OnForm(_stage, _stage.BoxClient(PreviewStage.Trans)), "Çeviri kutusu", "Türkçe yazı bu kutunun yerinde çıkar. Onu da sürükleyip boyutlandırabilirsin.", 0),
+            new(_sourceCard.Bounds, "Kaynak ve monitör", "Kaynak hangi pencereyi, Monitör hangi ekranı okuyacağını seçer.", 0),
+            new(_inspector.Bounds, "Alanlar", "Seçili kutunun konumu ve boyutu sayı olarak burada durur. İstersen buradan da yazarsın.", 0),
+            new(_statusCard.Bounds, "Başlat ve durum", "Başlat okumayı açar. Alttaki yazı hazır mı, çalışıyor mu onu söyler.", 0),
+            new(_lastCard.Bounds, "Son çeviri", "En son okunan satır ve Türkçesi bu kartta görünür.", 0),
+            new(_inspector.Bounds, "Görünüm", "Yazı boyutu, renk ve arka plan burada. Örnek cümle önizlemede hemen değişir.", 1),
+            new(_inspector.Bounds, "Sözlük", "Oyun adlarını ve terimleri buradan korursun. Paketleri açıp kapatabilirsin.", 2),
+            new(_inspector.Bounds, "Gelişmiş", "Güncelleme, OCR paketi ve bu tanıtımın tekrarı buradadır.", 3),
+        };
+        ShowNav(0);
+        return list.ToArray();
+    }
+
+    private void CaptureShots(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        Arrange();
+        Refresh();
+        SaveShot(dir, "01-ana.png");
+        StartTour();
+        (int Step, string Name)[] frames =
+        {
+            (0, "02-tur-menu.png"),
+            (2, "03-tur-orijinal.png"),
+            (5, "04-tur-alanlar.png"),
+            (8, "05-tur-gorunum.png"),
+        };
+        foreach (var (step, name) in frames)
+        {
+            _tour.Go(step);
+            SaveShot(dir, name);
+        }
+    }
+
+    private void SaveShot(string dir, string name)
+    {
+        using var bmp = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
+        DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+        bmp.Save(Path.Combine(dir, name), System.Drawing.Imaging.ImageFormat.Png);
     }
 
     private void Patch(Action<AppSettings> edit, bool persist = true)

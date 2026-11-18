@@ -33,7 +33,7 @@ internal sealed class OverlayForm : Form
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
-        Text = "Çevirmen Samet Katmanı";
+        Text = AppInfo.DisplayName + " Katmanı";
         _fmt = new StringFormat(StringFormat.GenericTypographic)
         {
             Alignment = StringAlignment.Center,

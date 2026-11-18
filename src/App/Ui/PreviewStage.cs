@@ -45,6 +45,14 @@ internal sealed class PreviewStage : Control
     public Rectangle Source => _source;
     public int Selected => _selected;
     public Rectangle Box(int i) => _box[i];
+    /// <summary>Box rectangle in this control's client pixels, including where the handles sit.</summary>
+    public Rectangle BoxClient(int i)
+    {
+        var f = ToClient(_box[i]);
+        var r = Rectangle.Round(f);
+        r.Inflate(10, 14);
+        return r;
+    }
     public bool IsLocked(int i) => _locked[i];
     public bool HasFrame => _frame != null;
 

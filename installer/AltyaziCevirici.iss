@@ -1,4 +1,4 @@
-﻿#define MyAppName "Çevirmen Samet"
+﻿#define MyAppName "Tercüman"
 #ifndef MyAppVersion
 #define MyAppVersion "1.5.0"
 #endif
@@ -100,3 +100,6 @@ end;
 Type: files; Name: "{userdesktop}\Altyazı Çevirici.lnk"
 Type: files; Name: "{userprograms}\Altyazı Çevirici.lnk"
 Type: filesandordirs; Name: "{userprograms}\Altyazı Çevirici"
+Type: files; Name: "{userdesktop}\Çevirmen Samet.lnk"
+Type: files; Name: "{userprograms}\Çevirmen Samet.lnk"
+Type: filesandordirs; Name: "{userprograms}\Çevirmen Samet"
