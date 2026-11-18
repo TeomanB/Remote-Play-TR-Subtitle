@@ -1,0 +1,200 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Release creation uses the default GITHUB_TOKEN. No other secrets.
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  test-linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test AltyaziCevirici.sln -c Release --nologo
+
+  windows:
+    name: Test, publish, Setup.exe
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test AltyaziCevirici.sln -c Release --nologo
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $ver = (dotnet msbuild src/App/AltyaziCevirici.csproj -getProperty:Version -nologo).Trim()
+          if ($ver -notmatch '^\d+\.\d+\.\d+$') { throw "Unexpected csproj version: '$ver'" }
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8NoBOM
+          Write-Host "version=$ver"
+
+      - name: Publish self-contained win-x64
+        run: dotnet publish src/App/AltyaziCevirici.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish --nologo
+
+      - name: Check publish output
+        shell: pwsh
+        run: |
+          $exe = "publish\AltyaziCevirici.exe"
+          if (-not (Test-Path $exe)) { throw "Missing $exe" }
+          $len = (Get-Item $exe).Length
+          if ($len -lt 20MB) { throw "Publish is not a self-contained single file ($len bytes)" }
+          Get-ChildItem publish | Format-Table Name, Length
+
+      - name: Install Inno Setup 6.7.4
+        shell: pwsh
+        run: |
+          $ProgressPreference = "SilentlyContinue"
+          $setup = Join-Path $env:RUNNER_TEMP "innosetup-6.7.4.exe"
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe" -OutFile $setup -Headers @{ "User-Agent" = "altyazi-cevirici-ci" }
+          $p = Start-Process -FilePath $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Inno Setup installer exited $($p.ExitCode)" }
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe was not installed" }
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8NoBOM
+
+      - name: Build Setup.exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          & $env:ISCC "/DMyAppVersion=${{ steps.ver.outputs.version }}" "installer\AltyaziCevirici.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $setup = "artifacts\AltyaziCevirici-Setup-${{ steps.ver.outputs.version }}.exe"
+          if (-not (Test-Path $setup)) { throw "Missing $setup" }
+          if ((Get-Item $setup).Length -lt 1MB) { throw "Setup.exe is unexpectedly small" }
+
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $ver = "${{ steps.ver.outputs.version }}"
+          $zipPath = Join-Path (Resolve-Path artifacts) "AltyaziCevirici-Portable-$ver.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath }
+          $zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+          try {
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Resolve-Path "publish\AltyaziCevirici.exe"), "AltyaziCevirici.exe")
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Resolve-Path "KULLANIM.txt"), "KULLANIM.txt")
+          } finally {
+            $zip.Dispose()
+          }
+          $check = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          try {
+            $names = @($check.Entries | ForEach-Object { $_.FullName })
+            Write-Host ($names -join ", ")
+            if ($names.Count -ne 2 -or ($names -notcontains "AltyaziCevirici.exe") -or ($names -notcontains "KULLANIM.txt")) {
+              throw "Portable zip must contain only AltyaziCevirici.exe and KULLANIM.txt"
+            }
+          } finally {
+            $check.Dispose()
+          }
+
+      - name: Upload Setup.exe and portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: AltyaziCevirici-${{ steps.ver.outputs.version }}
+          path: |
+            artifacts/AltyaziCevirici-Setup-${{ steps.ver.outputs.version }}.exe
+            artifacts/AltyaziCevirici-Portable-${{ steps.ver.outputs.version }}.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: [test-linux, windows]
+    if: always() && needs.test-linux.result == 'success' && needs.windows.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Read version
+        id: ver
+        run: |
+          ver=$(dotnet msbuild src/App/AltyaziCevirici.csproj -getProperty:Version -nologo | tr -d '\r' | tail -n 1)
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected csproj version: '$ver'" >&2
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "version=$ver"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: AltyaziCevirici-${{ steps.ver.outputs.version }}
+          path: artifacts
+
+      - name: Show artifacts
+        run: |
+          ls -l artifacts
+          test -f "artifacts/AltyaziCevirici-Setup-${{ steps.ver.outputs.version }}.exe"
+          test -f "artifacts/AltyaziCevirici-Portable-${{ steps.ver.outputs.version }}.zip"
+
+      # push is limited to main by the workflow trigger. workflow_dispatch updates the same versioned release.
+      - name: Create or update release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          setup="artifacts/AltyaziCevirici-Setup-${VERSION}.exe"
+          zip="artifacts/AltyaziCevirici-Portable-${VERSION}.zip"
+          notes="$(mktemp)"
+          cat > "$notes" << EOF
+          Altyazı Çevirici ${VERSION}
+
+          - AltyaziCevirici-Setup-${VERSION}.exe — kullanıcı başına kurulum (yönetici gerekmez), Başlat menüsü, isteğe bağlı masaüstü kısayolu, kaldırıcı. Kurulum dili Türkçedir.
+          - AltyaziCevirici-Portable-${VERSION}.zip — AltyaziCevirici.exe ve KULLANIM.txt.
+
+          İngilizce OCR paketi (yönetici PowerShell):
+
+          \`\`\`powershell
+          Add-WindowsCapability -Online -Name "Language.OCR~~~en-US~0.0.1.0"
+          \`\`\`
+
+          Kurulum sihirbazı bu komutu isteğe bağlı çalıştırır. Kutuyu işaretlemezsen veya yönetici iznini reddedersen kurulum yine tamamlanır.
+
+          Ayarlar (ayarlar.json) ve hata.log, programın klasörü yazılabiliyorsa exe'nin yanında, değilse %AppData%\\AltyaziCevirici altındadır.
+          EOF
+          sed -i 's/^          //' "$notes"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$setup" "$zip" --clobber
+            gh release edit "$tag" --title "$tag" --notes-file "$notes"
+          else
+            gh release create "$tag" "$setup" "$zip" --title "$tag" --notes-file "$notes"
+          fi
