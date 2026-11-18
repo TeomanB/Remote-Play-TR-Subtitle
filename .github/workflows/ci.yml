@@ -75,6 +75,14 @@ jobs:
           $p2 = Start-Process -FilePath (Resolve-Path "publish\AltyaziCevirici.exe") -WorkingDirectory (Get-Location) -ArgumentList "--sozluk-shots","artifacts\ui" -PassThru
           if (-not $p2.WaitForExit(120000)) { try { $p2.Kill() } catch {} ; throw "Sozluk screenshot timed out" }
           if ($p2.ExitCode -ne 0) { throw "Sozluk screenshot exited $($p2.ExitCode)" }
+          $p3 = Start-Process -FilePath (Resolve-Path "publish\AltyaziCevirici.exe") -WorkingDirectory (Get-Location) -ArgumentList "--areas-shots","artifacts\ui" -PassThru
+          if (-not $p3.WaitForExit(120000)) { try { $p3.Kill() } catch {} ; throw "Areas screenshot timed out" }
+          if ($p3.ExitCode -ne 0) { throw "Areas screenshot exited $($p3.ExitCode)" }
+          foreach ($name in @("areas-100.png","areas-150.png","overlays-100.png","overlays-150.png")) {
+            $file = Join-Path "artifacts\ui" $name
+            if (-not (Test-Path $file)) { throw "Missing $file" }
+            if ((Get-Item $file).Length -lt 8KB) { throw "$file is too small" }
+          }
           foreach ($name in @("before-100.png","before-150.png","after-100.png","after-150.png")) {
             $file = Join-Path "artifacts\ui" $name
             if (-not (Test-Path $file)) { throw "Missing $file" }

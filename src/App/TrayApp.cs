@@ -21,8 +21,6 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     public event EventHandler? StateChanged;
     private readonly TranslationCache _cache = new(4000);
     private readonly System.Threading.Timer _warmTimer;
-    private SubtitlePipeline? _pipeline;
-    private long _lastAppliedSeq;
     private DateTime _lastNetUse = DateTime.UtcNow;
     private readonly SynchronizationContext _ui;
     private Icon _icon;
@@ -44,13 +42,18 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settingsPath = AppPaths.SettingsFile;
         _settings = AppSettings.Load(_settingsPath);
 
-        _overlay = new OverlayForm();
-        _ = _overlay.Handle; // create handle on UI thread
-
+        _settings.EnsureAlanlar();
         _hazir = HazirKutuphane.Yukle();
         _processor = new TranslationProcessor(_translator, _settings.ToProcessorOptions(_hazir));
-        _overlay.Configure(Region, _settings);
-        _previewTimer.Tick += (_, _) => { _previewTimer.Stop(); if (_previewing) { _previewing = false; _overlay.HideText(); } };
+        _overlay = OverlayFor(_settings.Alanlar![0].Id);
+        ConfigureOverlay(_overlay, _settings.Alanlar[0]);
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            if (!_previewing) return;
+            _previewing = false;
+            foreach (var o in _areaOverlays.Values) o.HideText();
+        };
 
         _pauseItem = new ToolStripMenuItem("Duraklat (F9)", null, (_, _) => SafeRun(TogglePause, "pause"));
         _runItem = new ToolStripMenuItem("Başlat", null, (_, _) => SafeRun(ToggleRun, "run"));
@@ -104,21 +107,14 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     // ---------------- capture loop ----------------
 
-    private SubtitlePipeline CreatePipeline()
-    {
-        var tracker = new SubtitleTracker(_settings.BenzerlikEsigi, TimeSpan.FromMilliseconds(_settings.GizlemeMs));
-        var scheduler = new TranslationScheduler(new TrackingBackend(this), _cache, OnDisplay);
-        return new SubtitlePipeline(tracker, scheduler);
-    }
-
     /// <summary>Wraps the translator to remember the last network use (for idle warm-up).</summary>
-    private sealed class TrackingBackend(TrayApp app) : ITranslateBackend
+    private sealed class TrackingBackend(TrayApp app, TranslationProcessor processor) : ITranslateBackend
     {
         public Task<TranslateOutcome> TranslateAsync(string text, CancellationToken ct)
         {
             app._lastNetUse = DateTime.UtcNow;
             var started = System.Diagnostics.Stopwatch.StartNew();
-            var task = app._processor.TranslateAsync(text, ct);
+            var task = processor.TranslateAsync(text, ct);
             _ = task.ContinueWith(t =>
             {
                 if (t.Status == TaskStatus.RanToCompletion)
@@ -131,14 +127,12 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
     private void StartLoop()
     {
         StopLoop();
-        if (_ocr == null || !_settings.HasRegion) return;
-        _overlay.Configure(Region, _settings);
-        _pipeline?.Dispose();
-        _pipeline = CreatePipeline();
+        _settings.EnsureAlanlar();
+        if (_ocr == null || !_settings.AcikAlanlar().Any()) return;
+        foreach (var area in _settings.Alanlar!) ConfigureOverlay(OverlayFor(area.Id), area);
         var cts = _loopCts = new CancellationTokenSource();
-        var region = Region;
-        var pipeline = _pipeline;
-        _loopTask = Task.Run(() => LoopAsync(region, pipeline, cts.Token));
+        var areas = _settings.Alanlar!.Select(a => a.Copy()).ToList();
+        _loopTask = Task.Run(() => LoopAsync(areas, cts.Token));
     }
 
     private void StopLoop()
@@ -152,29 +146,43 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _loopCts?.Dispose();
         _loopCts = null;
         _loopTask = null;
-        _pipeline?.Reset();
     }
 
     /// <summary>
     /// Sequential capture loop: one frame at a time (never overlapping, never queued). If a frame takes
     /// longer than the interval, the next one starts immediately; missed ticks are skipped.
     /// </summary>
-    private async Task LoopAsync(Rectangle region, SubtitlePipeline pipeline, CancellationToken ct)
+    private async Task LoopAsync(List<YakalamaAlani> areas, CancellationToken ct)
     {
         var interval = TimeSpan.FromMilliseconds(1000.0 / _settings.Fps);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         int errors = 0;
+        var pipes = areas.ToDictionary(a => a.Id, a => CreateAreaPipeline(a.Id));
         while (!ct.IsCancellationRequested)
         {
             var t0 = sw.Elapsed;
             try
             {
-                if (_resetRequested) { _resetRequested = false; pipeline.Reset(); }
+                if (_resetRequested)
+                {
+                    _resetRequested = false;
+                    foreach (var p in pipes.Values) p.Reset();
+                }
                 if (!_paused && _ocr != null)
                 {
-                    string text = await _ocr.ReadAsync(region, _settings.BeyazYaziFiltresi, _settings.BeyazEsik).ConfigureAwait(false);
-                    if (!OcrGate.Kabul(text, _settings.HedefDil)) text = string.Empty;
-                    pipeline.OnFrame(text, DateTime.UtcNow);
+                    foreach (var area in areas)
+                    {
+                        if (!pipes.TryGetValue(area.Id, out var pipe)) continue;
+                        if (!area.Acik || area.RegionWidth < 20 || area.RegionHeight < 10)
+                        {
+                            pipe.Reset();
+                            continue;
+                        }
+                        var rect = new Rectangle(area.RegionX, area.RegionY, area.RegionWidth, area.RegionHeight);
+                        string text = await _ocr.ReadAsync(area.Id, rect, _settings.BeyazYaziFiltresi, _settings.BeyazEsik).ConfigureAwait(false);
+                        if (!OcrGate.Kabul(text, _settings.HedefDil)) text = string.Empty;
+                        pipe.OnFrame(text, DateTime.UtcNow);
+                    }
                 }
                 errors = 0;
             }
@@ -193,21 +201,58 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             }
             catch (OperationCanceledException) { break; }
         }
+        foreach (var pipe in pipes.Values) pipe.Dispose();
     }
 
     /// <summary>Called by the scheduler (under its lock): only marshal to the UI thread here.</summary>
-    private void OnDisplay(DisplayUpdate u) => _ui.Post(ApplyDisplay, u);
+    private SubtitlePipeline CreateAreaPipeline(string id)
+    {
+        var proc = new TranslationProcessor(_translator, _settings.ToProcessorOptions(_hazir));
+        var tracker = new SubtitleTracker(_settings.BenzerlikEsigi, TimeSpan.FromMilliseconds(_settings.GizlemeMs));
+        var scheduler = new TranslationScheduler(new TrackingBackend(this, proc), _cache, update => OnAreaDisplay(id, update));
+        return new SubtitlePipeline(tracker, scheduler);
+    }
 
-    private void ApplyDisplay(object? state)
+    private void OnAreaDisplay(string id, DisplayUpdate u) => _ui.Post(state => ApplyArea(id, (DisplayUpdate)state!), u);
+
+    private readonly Dictionary<string, OverlayForm> _areaOverlays = new(StringComparer.Ordinal);
+
+    private OverlayForm OverlayFor(string id)
+    {
+        if (_areaOverlays.TryGetValue(id, out var existing)) return existing;
+        var created = new OverlayForm();
+        _ = created.Handle;
+        _areaOverlays[id] = created;
+        return created;
+    }
+
+    private void ConfigureOverlay(OverlayForm overlay, YakalamaAlani area)
+    {
+        var look = _settings.Clone();
+        area.MirrorTo(look);
+        if (area.KutuGenislik >= SubtitleLayout.MinWidth) look.KonumAyarlandi = true;
+        look.DisCizgiRengi = area.Renk;
+        if (look.DisCizgi < 2) look.DisCizgi = 3;
+        overlay.Configure(new Rectangle(area.RegionX, area.RegionY, area.RegionWidth, area.RegionHeight), look);
+    }
+
+    private readonly Dictionary<string, long> _areaSeq = new(StringComparer.Ordinal);
+
+    private void ApplyArea(string id, DisplayUpdate u)
     {
         try
         {
-            if (state is not DisplayUpdate u || u.Seq <= _lastAppliedSeq) return; // never apply stale updates
-            _lastAppliedSeq = u.Seq;
+            if (!_areaOverlays.TryGetValue(id, out var overlay)) return;
+            if (_areaSeq.TryGetValue(id, out var seen) && u.Seq <= seen) return;
+            _areaSeq[id] = u.Seq;
             if (_previewing) { _previewing = false; _previewTimer.Stop(); }
-            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { _overlay.HideText(); return; }
-            _lastText = u.Shown ?? string.Empty;
-            _overlay.ShowText(_lastText, u.IsFallback);
+            if (u.Kind == DisplayKind.Hide || _paused || _selecting) { overlay.HideText(); return; }
+            string shown = u.Shown ?? string.Empty;
+            if (id == _settings.Alanlar![Math.Clamp(_settings.SeciliAlan, 0, _settings.Alanlar.Count - 1)].Id)
+                _lastText = shown;
+            var area = _settings.Alanlar?.FirstOrDefault(a => a.Id == id);
+            if (area != null) ConfigureOverlay(overlay, area);
+            overlay.ShowText(shown, u.IsFallback);
         }
         catch (Exception ex) { ErrorLog.Write(ex, "overlay"); }
     }
@@ -258,10 +303,13 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
             if (f.ShowDialog() == DialogResult.OK)
             {
                 var r = f.SelectedRegion;
-                _settings.RegionX = r.X;
-                _settings.RegionY = r.Y;
-                _settings.RegionWidth = r.Width;
-                _settings.RegionHeight = r.Height;
+                _settings.EnsureAlanlar();
+                var alan = _settings.Alanlar![Math.Clamp(_settings.SeciliAlan, 0, _settings.Alanlar.Count - 1)];
+                alan.RegionX = r.X;
+                alan.RegionY = r.Y;
+                alan.RegionWidth = r.Width;
+                alan.RegionHeight = r.Height;
+                alan.MirrorTo(_settings);
                 SaveSettings();
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 Balloon("Bölge kaydedildi. Çeviri için Başlat'a bas.", ToolTipIcon.Info);
@@ -408,6 +456,8 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         _settings.SonSayfa = e.SonSayfa;
         _settings.WindowsIleBaslat = e.WindowsIleBaslat;
         _settings.TanitimGoruldu = e.TanitimGoruldu;
+        _settings.SeciliAlan = e.SeciliAlan;
+        _settings.Alanlar = e.Alanlar?.Select(a => a.Copy()).ToList();
         _settings.SeciliHazirOyun = e.SeciliHazirOyun;
         _settings.SadeceHazirPaket = e.SadeceHazirPaket?.ToList() ?? new List<string>();
         _settings.KonumAyarlandi = e.KonumAyarlandi;
@@ -477,10 +527,15 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
 
     public void ShowPreview()
     {
-        if (!_settings.HasRegion) { Balloon("Önce altyazı bölgesini seç (F8).", ToolTipIcon.Info); return; }
+        _settings.EnsureAlanlar();
+        if (!_settings.AcikAlanlar().Any()) { Balloon("Önce bir altyazı alanı aç.", ToolTipIcon.Info); return; }
         _previewing = true;
-        _overlay.Configure(Region, _settings);
-        _overlay.ShowText(MainWindow.OrnekAltyazi, false);
+        foreach (var area in _settings.Alanlar!.Where(a => a.Acik))
+        {
+            var overlay = OverlayFor(area.Id);
+            ConfigureOverlay(overlay, area);
+            overlay.ShowText(MainWindow.OrnekAltyazi, false);
+        }
         _previewTimer.Stop();
         _previewTimer.Start();
     }
@@ -515,10 +570,9 @@ internal sealed class TrayApp : ApplicationContext, IAppHost
         try { _previewTimer.Dispose(); } catch (Exception) { }
         try { if (_center is { IsDisposed: false }) { _center.AllowExit(); _center.Close(); } } catch (Exception) { }
         StopLoop();
-        _pipeline?.Dispose();
         _hotkeys?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-        _overlay?.Close();
+        foreach (var overlay in _areaOverlays.Values) overlay.Close();
         _ocr?.Dispose();
         _translator.Dispose();
         ExitThread();

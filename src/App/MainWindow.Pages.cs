@@ -20,6 +20,12 @@ internal sealed partial class MainWindow
     private readonly UiButton _resetBox = new() { Text = "Varsayılana döndür", Glyph = Ic.Reset };
     private readonly UiButton _pickRegion = new() { Text = "Ekranda işaretle (F8)", Glyph = Ic.Select, Kind = ButtonKind.Ghost };
     private readonly UiToggle _lockToggle = new();
+    private readonly AreaList _areaList = new();
+    private readonly UiInput _areaName = new() { Placeholder = "Alan adı" };
+    private readonly UiButton _areaAdd = new() { Text = "Alan ekle", Kind = ButtonKind.Secondary };
+    private readonly UiButton _areaRemove = new() { Text = "Sil", Kind = ButtonKind.Ghost };
+    private readonly UiButton _areaColor = new() { Text = "Renk", Kind = ButtonKind.Ghost };
+    private readonly UiToggle _areaOn = new();
 
     // Görünüm
     private readonly UiDropdown _fontDrop = new();
@@ -97,9 +103,29 @@ internal sealed partial class MainWindow
         _resetBox.Click += (_, _) => ResetBox();
         _pickRegion.Click += (_, _) => _host.SelectRegion();
         _lockToggle.CheckedChanged += (_, _) => SetLock(_stage.Selected, _lockToggle.Checked);
+        _areaList.Chosen += (_, index) => SelectCaptureArea(index);
+        _areaList.Toggled += (_, e) => SetAreaEnabled(e.Index, e.On);
+        _areaName.Committed += (_, _) => RenameArea(_areaName.Value);
+        _areaAdd.Click += (_, _) => AddCaptureArea();
+        _areaRemove.Click += (_, _) => RemoveCaptureArea();
+        _areaColor.Click += (_, _) => CycleAreaColor();
+        _areaOn.CheckedChanged += (_, _) => SetAreaEnabled(_stage.AreaIndex, _areaOn.Checked);
 
-        _areasPage = new InspectorPage("Alanlar", "Seçili kutunun tam konumu ve boyutu.", (p, w, y) =>
+        _areasPage = new InspectorPage("Alanlar", "Her alanın kendi okuma bölgesi ve çeviri kutusu vardır.", (p, w, y) =>
         {
+            y += p.AddSection(y, w, "Yakalama alanları") + Theme.D(6);
+            InspectorPage.Put(_areaList, 0, y, w, _areaList.Height);
+            y += _areaList.Height + Theme.D(8);
+            int addW = Math.Max(Theme.D(110), Theme.Measure(_areaAdd.Text, Theme.SmallSemi).Width + Theme.D(24));
+            int delW = Math.Max(Theme.D(64), Theme.Measure(_areaRemove.Text, Theme.SmallSemi).Width + Theme.D(24));
+            InspectorPage.Put(_areaAdd, 0, y, addW, Theme.D(32));
+            InspectorPage.Put(_areaRemove, addW + Theme.D(8), y, delW, Theme.D(32));
+            int colorW = Math.Max(Theme.D(64), Theme.Measure(_areaColor.Text, Theme.SmallSemi).Width + Theme.D(24));
+            InspectorPage.Put(_areaColor, addW + delW + Theme.D(16), y, colorW, Theme.D(32));
+            y += Theme.D(32) + Theme.D(10);
+            InspectorPage.PutInput(_areaName, 0, y, w, Theme.D(34));
+            y += Theme.D(34) + Theme.D(8);
+            y += OptionBox(p, y, w, "Bu alanı oku", "Kapalıyken bu bölge okunmaz ve çevirisi gizlenir.", _areaOn) + Theme.D(14);
             InspectorPage.Put(_boxSeg, 0, y, w, Theme.D(34));
             y += Theme.D(34) + Theme.D(18);
             int col = (w - Theme.D(8)) / 2, fh = Theme.D(34);
@@ -120,7 +146,7 @@ internal sealed partial class MainWindow
             y += p.AddHint(y, w, "Kutular üst üste gelince seçili olan üstte kalır; diğerini seçmek için etiketine ya da yukarıdaki adına tıkla. Sayılar seçili kaynağın " + src + " görüntüsüne göredir.");
             return y;
         });
-        foreach (var c in new Control[] { _boxSeg, _gx, _gy, _gw, _gh, _resetBox, _pickRegion, _lockToggle }) _areasPage.Controls.Add(c);
+        foreach (var c in new Control[] { _areaList, _areaName, _areaAdd, _areaRemove, _areaColor, _areaOn, _boxSeg, _gx, _gy, _gw, _gh, _resetBox, _pickRegion, _lockToggle }) _areasPage.Controls.Add(c);
     }
 
     /// <summary>Gray rounded option row with a title, explanation, and a switch on the right. Returns its height.</summary>

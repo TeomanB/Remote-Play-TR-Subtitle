@@ -11,6 +11,8 @@ internal static class Program
             Environment.SetEnvironmentVariable("CEVIRMEN_SHOTS", Path.GetFullPath(args[1]));
         if (args.Length >= 2 && args[0] == "--sozluk-shots")
             Environment.SetEnvironmentVariable("SOZLUK_SHOTS", Path.GetFullPath(args[1]));
+        if (args.Length >= 2 && args[0] == "--areas-shots")
+            Environment.SetEnvironmentVariable("AREAS_SHOTS", Path.GetFullPath(args[1]));
         if (float.TryParse(Environment.GetEnvironmentVariable("SOZLUK_SCALE"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float scale))
             AltyaziCevirici.Ui.Theme.ForcedScale = scale;
 

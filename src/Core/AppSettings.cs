@@ -89,8 +89,18 @@ public sealed class AppSettings
     /// <summary>Games whose misses must not call Google. A match still uses the pack.</summary>
     public List<string>? SadeceHazirPaket { get; set; }
 
+    // ---- v1.5.2 several capture areas. Null/empty migrates the legacy region into "Konuşma". ----
+    public List<YakalamaAlani>? Alanlar { get; set; }
+    public int SeciliAlan { get; set; }
+
     [JsonIgnore]
     public bool HasRegion => RegionWidth >= 20 && RegionHeight >= 10;
+
+    public IEnumerable<YakalamaAlani> AcikAlanlar()
+    {
+        EnsureAlanlar();
+        return Alanlar!.Where(a => a.Acik && a.RegionWidth >= 20 && a.RegionHeight >= 10);
+    }
 
     public static List<SozlukGirdisi> DefaultGlossary() => new();
 
@@ -178,6 +188,25 @@ public sealed class AppSettings
         SadeceHazirPaket ??= new List<string>();
         SadeceHazirPaket.RemoveAll(string.IsNullOrWhiteSpace);
         for (int i = 0; i < SadeceHazirPaket.Count; i++) SadeceHazirPaket[i] = SadeceHazirPaket[i].Trim();
+        EnsureAlanlar();
+    }
+
+    /// <summary>One capture rectangle plus its own translation box. Old files become a single "Konuşma" area.</summary>
+    public void EnsureAlanlar()
+    {
+        if (Alanlar == null || Alanlar.Count == 0)
+            Alanlar = new List<YakalamaAlani> { YakalamaAlani.FromLegacy(this) };
+        if (Alanlar.Count > YakalamaAlani.EnFazla) Alanlar.RemoveRange(YakalamaAlani.EnFazla, Alanlar.Count - YakalamaAlani.EnFazla);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < Alanlar.Count; i++)
+        {
+            var a = Alanlar[i] ??= new YakalamaAlani();
+            a.Clamp();
+            if (string.IsNullOrWhiteSpace(a.Id) || !seen.Add(a.Id)) a.Id = "alan" + (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (string.IsNullOrWhiteSpace(a.Renk) || !TryParseColor(a.Renk, out _)) a.Renk = YakalamaAlani.Palet[i % YakalamaAlani.Palet.Length];
+        }
+        SeciliAlan = Math.Clamp(SeciliAlan, 0, Alanlar.Count - 1);
+        Alanlar[0].MirrorTo(this);
     }
 
     private static string CleanTag(string? v)

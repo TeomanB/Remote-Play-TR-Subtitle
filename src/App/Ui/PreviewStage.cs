@@ -20,6 +20,8 @@ internal sealed class PreviewStage : Control
     private int _selected = Trans;
     private AppSettings _look = new();
     private string _sample = "";
+    private readonly List<PreviewArea> _areas = new();
+    private int _area;
 
     private int _dragBox = -1;
     private int _dragPart = -2; // -1 body, 0..7 handles
@@ -33,6 +35,7 @@ internal sealed class PreviewStage : Control
     public event EventHandler? BoxesChanged;
     /// <summary>Drag finished: persist now.</summary>
     public event EventHandler? BoxesCommitted;
+    public event EventHandler? AreaChanged;
 
     public PreviewStage()
     {
@@ -75,6 +78,19 @@ internal sealed class PreviewStage : Control
     public void SetBox(int i, Rectangle r)
     {
         _box[i] = r;
+        PushArea();
+        Invalidate();
+    }
+
+    public int AreaIndex => _area;
+    public IReadOnlyList<PreviewArea> Areas => _areas;
+
+    public void SetAreas(IReadOnlyList<PreviewArea> areas, int selected)
+    {
+        _areas.Clear();
+        _areas.AddRange(areas);
+        _area = _areas.Count == 0 ? 0 : Math.Clamp(selected, 0, _areas.Count - 1);
+        PullArea();
         Invalidate();
     }
 
@@ -96,7 +112,35 @@ internal sealed class PreviewStage : Control
     public void SetLocked(int i, bool locked)
     {
         _locked[i] = locked;
+        PushArea();
         Invalidate();
+    }
+
+    private void PullArea()
+    {
+        if (_areas.Count == 0) return;
+        var a = _areas[_area];
+        _box[Orig] = a.Capture;
+        _box[Trans] = a.Overlay;
+        _locked[Orig] = a.LockCapture;
+        _locked[Trans] = a.LockOverlay;
+    }
+
+    private void PushArea()
+    {
+        if (_areas.Count == 0) return;
+        var a = _areas[_area];
+        a.Capture = _box[Orig];
+        a.Overlay = _box[Trans];
+        a.LockCapture = _locked[Orig];
+        a.LockOverlay = _locked[Trans];
+    }
+
+    private static Color AreaColor(PreviewArea? area)
+    {
+        if (area != null && AppSettings.TryParseColor(area.ColorHex, out var rgb))
+            return Color.FromArgb(255, rgb.R, rgb.G, rgb.B);
+        return Theme.BoxOrig;
     }
 
     public static int MinWidth(int i) => i == Trans ? SubtitleLayout.MinWidth : 40;
@@ -125,7 +169,7 @@ internal sealed class PreviewStage : Control
     private RectangleF TagRect(int i)
     {
         var b = ToClient(_box[i]);
-        string text = Names[i];
+        string text = TagText(i);
         int w = Theme.Measure(text, Theme.Tag).Width + Theme.D(14) + (_locked[i] ? Theme.D(14) : 0);
         float h = Theme.D(19);
         float y = b.Y - h - Theme.D(5);
@@ -174,6 +218,14 @@ internal sealed class PreviewStage : Control
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left) return;
         Focus();
+        int foreign = HitForeign(e.Location);
+        if (foreign >= 0)
+        {
+            PushArea();
+            _area = foreign;
+            PullArea();
+            AreaChanged?.Invoke(this, EventArgs.Empty);
+        }
         var (box, part) = Hit(e.Location);
         if (box < 0)
         {
@@ -312,6 +364,8 @@ internal sealed class PreviewStage : Control
         }
         else Placeholder.Draw(g, m);
 
+        for (int i = 0; i < _areas.Count; i++)
+            if (i != _area) DrawForeign(g, _areas[i]);
         int first = 1 - _selected;
         DrawBox(g, first);
         DrawBox(g, _selected);
@@ -325,7 +379,9 @@ internal sealed class PreviewStage : Control
     {
         if (_box[i].IsEmpty) return;
         bool sel = i == _selected, locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        var color = _areas.Count > _area
+            ? (i == Orig ? AreaColor(_areas[_area]) : Theme.Mix(AreaColor(_areas[_area]), Color.White, 0.35f))
+            : (i == Orig ? Theme.BoxOrig : Theme.BoxTrans);
         float fade = !sel && locked ? 0.75f : 1f;
         var tag = TagRect(i);
         var tagFill = sel ? color : Theme.Mix(color, Theme.Stage, 0.3f);
@@ -336,8 +392,44 @@ internal sealed class PreviewStage : Control
             Theme.Glyph(g, Ic.Lock, Theme.Icon12, new Rectangle(tx - Theme.D(1), (int)tag.Y, Theme.D(13), (int)tag.Height), Theme.TagInk);
             tx += Theme.D(14);
         }
-        Theme.Text(g, Names[i], Theme.Tag, new Rectangle(tx, (int)tag.Y, (int)tag.Right - tx, (int)tag.Height), Theme.TagInk);
+        Theme.Text(g, TagText(i), Theme.Tag, new Rectangle(tx, (int)tag.Y, (int)tag.Right - tx, (int)tag.Height), Theme.TagInk);
     }
+
+    private string TagText(int i) => _areas.Count > _area
+        ? (i == Orig ? _areas[_area].Name : _areas[_area].Name + " · çeviri")
+        : Names[i];
+
+    private int HitForeign(Point p)
+    {
+        for (int i = _areas.Count - 1; i >= 0; i--)
+        {
+            if (i == _area || !_areas[i].Enabled) continue;
+            if (ToClient(_areas[i].Overlay).Contains(p) || ToClient(_areas[i].Capture).Contains(p)) return i;
+        }
+        return -1;
+    }
+
+    private void DrawForeign(Graphics g, PreviewArea area)
+    {
+        var color = AreaColor(area);
+        DrawPlain(g, area.Capture, color, area.Name, dashed: true);
+        DrawPlain(g, area.Overlay, Theme.Mix(color, Color.White, 0.35f), area.Name + " · çeviri", dashed: false);
+    }
+
+    private void DrawPlain(Graphics g, Rectangle screen, Color color, string label, bool dashed)
+    {
+        if (screen.Width < 4 || screen.Height < 4) return;
+        var b = ToClient(screen);
+        using var path = Theme.Round(b, Theme.D(7));
+        using var pen = new Pen(Theme.Alpha(color, areaAlpha(dashed)), Theme.D(1.5f));
+        if (dashed) pen.DashPattern = new[] { 4f, 3f };
+        g.DrawPath(pen, path);
+        var tag = new RectangleF(b.X, Math.Max(Theme.D(2), b.Y - Theme.D(22)), Theme.Measure(label, Theme.Tag).Width + Theme.D(14), Theme.D(18));
+        Theme.FillRound(g, tag, Theme.D(6), color);
+        Theme.Text(g, label, Theme.Tag, Rectangle.Round(tag), Theme.TagInk, Theme.Center);
+    }
+
+    private static int areaAlpha(bool dashed) => dashed ? 220 : 255;
 
     private void DrawBox(Graphics g, int i)
     {
@@ -345,7 +437,9 @@ internal sealed class PreviewStage : Control
         var b = ToClient(_box[i]);
         bool sel = i == _selected;
         bool locked = _locked[i];
-        var color = i == Orig ? Theme.BoxOrig : Theme.BoxTrans;
+        var color = _areas.Count > _area
+            ? (i == Orig ? AreaColor(_areas[_area]) : Theme.Mix(AreaColor(_areas[_area]), Color.White, 0.35f))
+            : (i == Orig ? Theme.BoxOrig : Theme.BoxTrans);
         float fade = !sel && locked ? 0.75f : 1f;
         var line = Theme.Alpha(color, (int)(255 * fade));
 
@@ -417,6 +511,18 @@ internal sealed class PreviewStage : Control
         if (disposing) { _frame?.Dispose(); _frame = null; }
         base.Dispose(disposing);
     }
+}
+
+internal sealed class PreviewArea
+{
+    public string Id = "";
+    public string Name = "Konuşma";
+    public string ColorHex = "#F5A524";
+    public bool Enabled = true;
+    public Rectangle Capture;
+    public Rectangle Overlay;
+    public bool LockCapture;
+    public bool LockOverlay;
 }
 
 /// <summary>Game-like scene shown when no screen frame is available yet.</summary>

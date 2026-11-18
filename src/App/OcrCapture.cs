@@ -19,19 +19,23 @@ internal sealed class OcrCapture : IDisposable
 
     private readonly OcrEngine _engine;
     private readonly int _maxDim;
-    private readonly byte[] _sampleA = new byte[SampleW * SampleH];
-    private readonly byte[] _sampleB = new byte[SampleW * SampleH];
     private readonly ImageAttributes _clampAttr = new();
-    private byte[] _cur, _prev;
-    private bool _hasPrev;
+    private readonly Dictionary<string, Slot> _slots = new(StringComparer.Ordinal);
     private Bitmap? _raw;
     private Graphics? _rawG;
     private Bitmap? _scaled;
     private Graphics? _scaledG;
     private byte[] _gray = Array.Empty<byte>();
-    private string _prevText = string.Empty;
-    private bool _prevFilter;
-    private int _prevThreshold;
+
+    private sealed class Slot
+    {
+        public byte[] Cur = new byte[SampleW * SampleH];
+        public byte[] Prev = new byte[SampleW * SampleH];
+        public bool Has;
+        public string Text = "";
+        public bool Filter;
+        public int Threshold;
+    }
 
     public string LanguageTag { get; }
     public bool IsEnglish { get; }
@@ -42,8 +46,6 @@ internal sealed class OcrCapture : IDisposable
     {
         _engine = engine;
         _maxDim = (int)Math.Max(256, OcrEngine.MaxImageDimension);
-        _cur = _sampleA;
-        _prev = _sampleB;
         _clampAttr.SetWrapMode(WrapMode.TileFlipXY); // no dark ghost border when scaling a crop
         LanguageTag = engine.RecognizerLanguage?.LanguageTag ?? "?";
         IsEnglish = LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase);
@@ -87,41 +89,46 @@ internal sealed class OcrCapture : IDisposable
     private enum Prep { Unchanged, Empty, Ready }
 
     /// <summary>One frame. Returns normalized text ("" if no subtitle).</summary>
-    public async Task<string> ReadAsync(Rectangle region, bool whiteFilter, int threshold)
+    public Task<string> ReadAsync(Rectangle region, bool whiteFilter, int threshold) =>
+        ReadAsync("", region, whiteFilter, threshold);
+
+    /// <summary>One area. Unchanged-frame memory is kept per <paramref name="slot"/> so other areas do not reset it.</summary>
+    public async Task<string> ReadAsync(string slot, Rectangle region, bool whiteFilter, int threshold)
     {
-        var prep = Prepare(region, whiteFilter, threshold, out int w, out int h);
-        if (prep == Prep.Unchanged) return _prevText;
-        if (prep == Prep.Empty) { _prevText = string.Empty; return _prevText; }
+        if (!_slots.TryGetValue(slot, out var state)) _slots[slot] = state = new Slot();
+        var prep = Prepare(state, region, whiteFilter, threshold, out int w, out int h);
+        if (prep == Prep.Unchanged) return state.Text;
+        if (prep == Prep.Empty) { state.Text = string.Empty; return state.Text; }
 
         using var sbmp = new SoftwareBitmap(BitmapPixelFormat.Gray8, w, h);
         sbmp.CopyFromBuffer(_gray.AsBuffer(0, w * h));
         var result = await _engine.RecognizeAsync(sbmp);
         var parts = new List<string>(result.Lines.Count);
         foreach (var l in result.Lines) parts.Add(l.Text);
-        _prevText = TextUtil.Normalize(string.Join(' ', parts));
-        return _prevText;
+        state.Text = TextUtil.Normalize(string.Join(' ', parts));
+        return state.Text;
     }
 
     /// <summary>Synchronous part: capture, unchanged-frame skip, crop, scale, Gray8 into <see cref="_gray"/>.</summary>
-    private Prep Prepare(Rectangle region, bool whiteFilter, int threshold, out int w, out int h)
+    private Prep Prepare(Slot state, Rectangle region, bool whiteFilter, int threshold, out int w, out int h)
     {
         w = h = 0;
         EnsureRaw(region.Size);
         _rawG!.CopyFromScreen(region.Left, region.Top, 0, 0, region.Size, CopyPixelOperation.SourceCopy);
 
-        if (whiteFilter != _prevFilter || threshold != _prevThreshold) _hasPrev = false;
-        _prevFilter = whiteFilter;
-        _prevThreshold = threshold;
+        if (whiteFilter != state.Filter || threshold != state.Threshold) state.Has = false;
+        state.Filter = whiteFilter;
+        state.Threshold = threshold;
 
         PixelRect crop = new(0, 0, region.Width, region.Height);
         var data = _raw!.LockBits(new Rectangle(Point.Empty, region.Size), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try
         {
             var span = Span(data);
-            ImageOps.Sample(span, data.Width, data.Height, data.Stride, _cur, SampleW, SampleH);
-            if (_hasPrev && ImageOps.MeanAbsDiff(_cur, _prev) < UnchangedDiff) return Prep.Unchanged; // no OCR
-            (_cur, _prev) = (_prev, _cur);
-            _hasPrev = true;
+            ImageOps.Sample(span, data.Width, data.Height, data.Stride, state.Cur, SampleW, SampleH);
+            if (state.Has && ImageOps.MeanAbsDiff(state.Cur, state.Prev) < UnchangedDiff) return Prep.Unchanged; // no OCR
+            (state.Cur, state.Prev) = (state.Prev, state.Cur);
+            state.Has = true;
 
             if (whiteFilter && !ImageOps.TryFindTextBox(span, data.Width, data.Height, data.Stride, threshold, out crop))
                 return Prep.Empty; // no bright text at all: skip OCR
@@ -157,7 +164,6 @@ internal sealed class OcrCapture : IDisposable
         _raw?.Dispose();
         _raw = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
         _rawG = Graphics.FromImage(_raw);
-        _hasPrev = false;
     }
 
     private void EnsureScaled(int w, int h, Size region)
